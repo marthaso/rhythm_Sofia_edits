@@ -22,8 +22,6 @@ close all; clc;
 % functional can be written with minimal interaction (see user guide).
 handles = rhythmHandles;
 
-x = 3
-
 try
     editor_service = com.mathworks.mlservices.MLEditorServices;
     editor_app = editor_service.getEditorApplication;
