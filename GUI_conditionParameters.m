@@ -604,24 +604,40 @@ end
         handles.activeCamData.maxFrame = maxFrame;
         handles.maxFrame = maxFrame;
         
-        mask = handles.activeCamData.finalSegmentation;
-        if handles.drawSegmentation == 0
-            mask = ones(size(mask));
+        % mask = handles.activeCamData.finalSegmentation;
+        % if handles.drawSegmentation == 0
+        %     mask = ones(size(mask));
+        % end
+
+        mask = zeros(256,256);
+        for i = 1:256 %go through each pixel
+            for j = 1:256 %go through each pixel
+                if std(handles.activeCamData.cmosData(i,j,1:4999)) > 0.2
+                   mask(i,j) = 1;
+                end
+            end
         end
+
         
         %% Remove Background
         if removeBG_state == 1
             % Update counter % progress bar
             counter = counter + 1;
             waitbar(counter/trackProg,g1,'Removing Background');
-            handles.activeCamData.cmosData =...
-                handles.activeCamData.cmosData.* repmat(mask,...
-                   [1 1 size(handles.activeCamData.cmosData, 3)]);
+           
+            %if you want to go to the normal background, uncomment the next
+            %three lines
+             
+            %handles.activeCamData.cmosData =...
+                %handles.activeCamData.cmosData.* repmat(mask,...
+                 %  [1 1 size(handles.activeCamData.cmosData, 3)]);
                    
           set(removeBG_button,'Value',0);
           removeBGcheckbox_callback(hObject);
           handles.drawSegmentation = 0;  
-          handles.drawBrush = 0;              
+          handles.drawBrush = 0;
+         
+            
         end
         
         %% Bin Data
@@ -734,6 +750,18 @@ end
             waitbar(counter/trackProg,g1,'Normalizing Data');
             handles.activeCamData.cmosData = normalize_data(handles.activeCamData.cmosData);
             handles.normflag = 1;
+            % Sofia Add 
+            mask_1 = zeros(256,256);
+            for i = 1:256 %go through each pixel
+                for j = 1:256 %go through each pixel
+                    if std(handles.activeCamData.cmosData(i,j,1:4999)) < 0.13
+                       mask_1(i,j) = 1;
+                    end
+                end
+            end
+            handles.activeCamData.cmosData =...
+                handles.activeCamData.cmosData.* repmat(mask_1,...
+                   [1 1 size(handles.activeCamData.cmosData, 3)]);
         end
                 
         %% Delete the progress bar

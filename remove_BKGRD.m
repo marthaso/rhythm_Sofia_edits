@@ -101,14 +101,28 @@ function new_data = remove_BKGRD(data,bg,thresh,perc_ex)
 % new_data = data.*mask;
 
 %% Method 2: Thresholding
-% Threshold Image
-BG = mat2gray(bg);
-level = graythresh(BG); % find Otsu threshold
-BW = im2bw(BG,level*thresh); % create mask
-BW2 = bwareaopen(BW, ceil(perc_ex*size(BG,1)*size(BG,2))); % remove islands
-BW3 = imfill(BW2,'holes'); %fill holes
-mask = repmat(BW3,[1 1 size(data,3)]); % bw to rgb?
-new_data = data.*mask; % apply mask to data
+% % Threshold Image
+% BG = mat2gray(bg);
+% level = graythresh(BG); % find Otsu threshold
+% BW = im2bw(BG,level*thresh); % create mask
+% BW2 = bwareaopen(BW, ceil(perc_ex*size(BG,1)*size(BG,2))); % remove islands
+% BW3 = imfill(BW2,'holes'); %fill holes
+% mask = repmat(BW3,[1 1 size(data,3)]); % bw to rgb?
+% new_data = data.*mask; % apply mask to data
+
+%% Method 3: Standard Deviation
+%% Create a mask using std dev
+
+mask_1 = zeros(256,256);
+for i = 1:256 %go through each pixel
+    for j = 1:256 %go through each pixel
+        if std(data(i,j,1:4999)) > 0.2
+           mask_1(i,j) = 1;
+        end
+    end
+end
+
+plot(mask_1)
 
 
 

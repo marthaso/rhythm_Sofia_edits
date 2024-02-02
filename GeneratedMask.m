@@ -16,4 +16,3 @@ mask(stdX> max(stdX(:))*thVal)=1;
 %mask(mx> m +stdX*5*thVal)=1;
 %mask(mxn> minx+(mx2-minx)*thVal)=1;
 end
-
