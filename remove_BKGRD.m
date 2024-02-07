@@ -113,16 +113,16 @@ function new_data = remove_BKGRD(data,bg,thresh,perc_ex)
 %% Method 3: Standard Deviation
 %% Create a mask using std dev
 
-mask_1 = zeros(256,256);
-for i = 1:256 %go through each pixel
-    for j = 1:256 %go through each pixel
-        if std(data(i,j,1:4999)) > 0.2
-           mask_1(i,j) = 1;
-        end
-    end
-end
-
-plot(mask_1)
+% mask_1 = zeros(256,256);
+% for i = 1:256 %go through each pixel
+%     for j = 1:256 %go through each pixel
+%         if std(data(i,j,1:4999)) > 0.2
+%            mask_1(i,j) = 1;
+%         end
+%     end
+% end
+% 
+% plot(mask_1)
 
 
 

@@ -604,19 +604,19 @@ end
         handles.activeCamData.maxFrame = maxFrame;
         handles.maxFrame = maxFrame;
         
-        % mask = handles.activeCamData.finalSegmentation;
-        % if handles.drawSegmentation == 0
-        %     mask = ones(size(mask));
-        % end
-
-        mask = zeros(256,256);
-        for i = 1:256 %go through each pixel
-            for j = 1:256 %go through each pixel
-                if std(handles.activeCamData.cmosData(i,j,1:4999)) > 0.2
-                   mask(i,j) = 1;
-                end
-            end
+        mask = handles.activeCamData.finalSegmentation;
+        if handles.drawSegmentation == 0
+            mask = ones(size(mask));
         end
+        % 
+        % mask = zeros(256,256);
+        % for i = 1:256 %go through each pixel
+        %     for j = 1:256 %go through each pixel
+        %         if std(handles.activeCamData.cmosData(i,j,1:4999)) > 0.2
+        %            mask(i,j) = 1;
+        %         end
+        %     end
+        % end
 
         
         %% Remove Background
@@ -627,10 +627,10 @@ end
            
             %if you want to go to the normal background, uncomment the next
             %three lines
-             
-            %handles.activeCamData.cmosData =...
-                %handles.activeCamData.cmosData.* repmat(mask,...
-                 %  [1 1 size(handles.activeCamData.cmosData, 3)]);
+            % 
+            % handles.activeCamData.cmosData =...
+            %     handles.activeCamData.cmosData.* repmat(mask,...
+            %       [1 1 size(handles.activeCamData.cmosData, 3)]);
                    
           set(removeBG_button,'Value',0);
           removeBGcheckbox_callback(hObject);
@@ -751,20 +751,66 @@ end
             handles.activeCamData.cmosData = normalize_data(handles.activeCamData.cmosData);
             handles.normflag = 1;
             % Sofia Add 
-            mask_1 = zeros(256,256);
-            for i = 1:256 %go through each pixel
-                for j = 1:256 %go through each pixel
-                    if std(handles.activeCamData.cmosData(i,j,1:4999)) < 0.13
-                       mask_1(i,j) = 1;
+            mask = zeros(256,256);
+
+            for i = 1:256
+                for j = 1:256
+                    pixel = handles.activeCamData.cmosData(i,j,1:4999);
+                    vector_pixel = reshape(pixel, 1, []);
+                    pks = findpeaks(vector_pixel);
+                    if max(size(pks)) < 190
+                        mask(i,j) = 1;
                     end
                 end
             end
+            figure
+            imagesc(mask)
+
+            %% now try to smooth the mask
+
+            mask1 = mask;
+
+            %%
+            % Define the threshold for changing pixel values
+            threshold = 5;
+
+            % Iterate over each pixel
+            for i = 2:size(mask1, 1)-1
+                for j = 2:size(mask1, 2)-1
+                    % Extract the current pixel value
+                    current_pixel = mask1(i, j);
+
+                    % Extract the values of the neighboring pixels
+                    neighbors = mask1(i-1:i+1, j-1:j+1);
+                    neighbors = neighbors(:);
+
+                    % Count the number of neighbors with a different value from the current pixel
+                    different_neighbors = sum(neighbors ~= current_pixel);
+
+                    % If five or more neighbors are different, change the current pixel value
+                    if different_neighbors >= threshold
+                        mask1(i, j) = ~current_pixel; % Toggle the value
+                    end
+                end
+            end
+
+            figure
+            imagesc(mask1)
+            %mask = mask1;
             handles.activeCamData.cmosData =...
-                handles.activeCamData.cmosData.* repmat(mask_1,...
+                handles.activeCamData.cmosData.* repmat(mask1,...
                    [1 1 size(handles.activeCamData.cmosData, 3)]);
         end
                 
         %% Delete the progress bar
+        % Extract the 3D array
+        %arrayToSave = handles.activeCamData.cmosData;
+
+% Save the array to a file
+        %save('arrayFile.mat', 'arrayToSave');
+        filename_default = strcat(handles.dir,'/mask.txt');
+        [filename, path] = uiputfile('*.txt', 'Save mask', filename_default);
+        save(strcat(path,filename), 'mask1', '-ascii', '-tabs');
         delete(g1)
         
         %% Save conditioned signal
