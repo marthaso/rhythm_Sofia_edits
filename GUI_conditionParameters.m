@@ -608,15 +608,7 @@ end
         if handles.drawSegmentation == 0
             mask = ones(size(mask));
         end
-        % 
-        % mask = zeros(256,256);
-        % for i = 1:256 %go through each pixel
-        %     for j = 1:256 %go through each pixel
-        %         if std(handles.activeCamData.cmosData(i,j,1:4999)) > 0.2
-        %            mask(i,j) = 1;
-        %         end
-        %     end
-        % end
+        
 
         
         %% Remove Background
@@ -751,7 +743,7 @@ end
             handles.activeCamData.cmosData = normalize_data(handles.activeCamData.cmosData);
             handles.normflag = 1;
             % Sofia Add 
-            mask = zeros(256,256);
+            mask1 = zeros(256,256);
 
             for i = 1:256
                 for j = 1:256
@@ -759,16 +751,16 @@ end
                     vector_pixel = reshape(pixel, 1, []);
                     pks = findpeaks(vector_pixel);
                     if max(size(pks)) < 190
-                        mask(i,j) = 1;
+                        mask1(i,j) = 1;
                     end
                 end
             end
             figure
-            imagesc(mask)
+            imagesc(mask1)
 
             %% now try to smooth the mask
 
-            mask1 = mask;
+            
 
             %%
             % Define the threshold for changing pixel values
@@ -811,6 +803,13 @@ end
         filename_default = strcat(handles.dir,'/mask.txt');
         [filename, path] = uiputfile('*.txt', 'Save mask', filename_default);
         save(strcat(path,filename), 'mask1', '-ascii', '-tabs');
+
+         %if you want to go to the normal background, uncomment the next
+            %three lines
+
+            handles.activeCamData.cmosData =...
+                handles.activeCamData.cmosData.* repmat(mask,...
+                [1 1 size(handles.activeCamData.cmosData, 3)]);
         delete(g1)
         
         %% Save conditioned signal
