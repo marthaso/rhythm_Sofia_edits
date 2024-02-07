@@ -198,7 +198,7 @@ numOfLevels_callback(numOfLevels_edit);
         handles.activeCamData.xres = str2double(get(xdist_edit,'String'));
         handles.activeCamData.yres = str2double(get(ydist_edit,'String'));
         set(f,'CurrentAxes',handles.activeScreen);        
-        axis([1 100 1 100]);
+        axis([1 size(handles.activeCamData.cmosData,1) 1 size(handles.activeCamData.cmosData,1)]);
         %axis ij;
         rect = getrect(handles.activeScreen);
         gg=msgbox('Building Conduction Velocity Map...');
