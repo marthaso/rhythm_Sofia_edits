@@ -105,11 +105,6 @@ if use_window
     xyt = [xx yy t]; % now you have [x cord, y cord, act time] for each pixel
     
     M=size(xyt,1); % find the size of xyt, aka how many pixels you have
-    % matrix with as many rows as pixels. it has 17 columns because it will
-    % store 17 parameters per pixel: x cord, y cord, t cord, 10
-    % coefficients(?),  the root mean square error, number of points
-    % included in the fit, the condition number of the fit matrix (?), and
-    % the linear part root mean square error.
     XYT=zeros(M,17); %as many rows you have pixels and 17 columns???
     
     space_window_width =  3; %2./ handles.activeCamData.xres; % mm space frame. might need to change, why??? how far in space will you look for neighbors
