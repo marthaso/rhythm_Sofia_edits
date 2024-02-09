@@ -323,7 +323,7 @@ end
        quiver_step = 2;
        q = quiver( handles.activeScreen, X(1:quiver_step:end),...
                    Y(1:quiver_step:end),Vx(1:quiver_step:end),...
-                   -1.0 * Vy(1:quiver_step:end),'w');      
+                   -1.0 * Vy(1:quiver_step:end),'k');      
        q.LineWidth = 2;
        q.AutoScaleFactor = 2;
        drawFrame(handles.frame ,handles.activeScreenNo, handles);
@@ -376,12 +376,17 @@ end
             end
             %contourf(flipud(handles.activeCamData.saveData), handles.numOfContourLevels,'LineColor','k');
             hold on;
+            figure
             sz=size(handles.activeCamData.saveData);
-            quiver_step = 2;
-            q = quiver(handles.activeCamData.saveX_plot(1:quiver_step:end),...
-                   sz(2)-handles.activeCamData.saveY_plot(1:quiver_step:end),...
-                   handles.activeCamData.saveVx_plot(1:quiver_step:end), ...
-                   handles.activeCamData.saveVy_plot(1:quiver_step:end),'w');
+
+            quiver_step_x = 5; % Step size for x direction
+            quiver_step_y = 5; % Step size for y direction (adjust as needed)
+
+            quiver_step = 5;
+            q = quiver(handles.activeCamData.saveX_plot(1:quiver_step_x:end),...
+                   sz(2)-handles.activeCamData.saveY_plot(1:quiver_step_y:end),...
+                   handles.activeCamData.saveVx_plot(1:quiver_step_x:end), ...
+                   handles.activeCamData.saveVy_plot(1:quiver_step_y:end),'k');
             q.LineWidth = 2;
             q.AutoScaleFactor = 2;
             hold off;
