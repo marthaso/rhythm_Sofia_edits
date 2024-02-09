@@ -88,7 +88,7 @@ rect = round(rect);
 croppedAmap = actMap1(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)); % get the map of only your selection
 %exclude everything, but activation front
 
-use_window=1; % use windowed least-squares fitting
+use_window=0; % use windowed least-squares fitting
 
 % if ~use_window
     % includeMask=zeros(rect(4)+1,rect(3)+1); %make a mask of zeroes?
@@ -162,14 +162,21 @@ if use_window
             % values and the values predicted by the linear part of the
             % fitted polynomial.
             resilin = sqrt(sum((t-fit(:,1:3)*coefs(1:3)).^2)/sum(t.^2));
+            % store these values in XYT per pixel: x cord, y cord, t cord, 10
+            % coefficients(?),  the root mean square error, number of points
+            % included in the fit, the condition number of the fit matrix (?), and
+            % the linear part root mean square error.
             XYT(i,:)= [xyt(i,:),coefs',resi,len,cond(fit),resilin];
         end
     end
-    
+    % find the maximum value in the time plane for your selected data.
+    % creates a matrix with however many times you hit the max
     cropped = max(dataCroppedInTime(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3),:), [], 3);
     %cropped = dataCroppedInTime(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3),1);
+    % make it a column of all the times you got the max time
     croppedResized = reshape(cropped,[],1);
     
+    % double check what they mean with this next line
     was_fitted=find( (XYT(:,1)~=0) & (XYT(:,2)~=0) & ( croppedResized(:) > 0) ); % if XYT was not filled or point not inside of segmented region
     XYT=XYT(was_fitted,:);
     
@@ -184,9 +191,9 @@ end
 
 
 % Fit Activation Map with 3rd-order Polynomial
-if ~use_window
+if ~use_window %
     cind = isfinite(croppedAmap);
-    [x y]= meshgrid(rect(1):rect(1)+rect(3),rect(2):rect(2)+rect(4));
+    [x, y]= meshgrid(rect(1):rect(1)+rect(3),rect(2):rect(2)+rect(4));
     x = reshape(x,[],1);
     y = reshape(y,[],1);
     z = reshape(croppedAmap,[],1);
@@ -207,57 +214,57 @@ end
 % rsq=1-SSres/SStot;
 % disp(['rsq of fit is ' num2str(rsq)]);
 % Find Gradient of Polynomial Surface
-if ~use_window
-    [Tx Ty] = gradient(Z_fit);
+if ~use_window %
+    [Tx, Ty] = gradient(Z_fit);
     Tx=Tx/handles.activeCamData.xres;
     Ty=Ty/handles.activeCamData.yres;
 end
  % Calculate Conduction Velocity
-% Vx = -Tx./(Tx.^2+Ty.^2);
-% Vy = -Ty./(Tx.^2+Ty.^2);
-% V = sqrt(Vx.^2 + Vy.^2);
-% meanV = mean2(V)
-% stdV = std2(V)
-% meanAng = mean2(atand(Vy./Vx))
-% stdAng = std2(atand(Vy./Vx))
-% Plot Map
-% cc = figure('Name','Activation Map with Velocity Vectors');
-% Create Mask
-% actMap_Mask = zeros(size(bg));
-% actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
-% Build the Image
-% G = real2rgb(bg, 'gray');
-% J = real2rgb(actMap1, 'jet',[min(min(temp)) max(max(temp))]);
-% A = real2rgb(actMap_Mask, 'gray');
-% I = J .* A + G .* (1-A);
-% image(I)
-% hold on
-% Overlay Conduction Velocity Vectors
-% quiver(X,Y,reshape(Vx,[],1),reshape(Vy,[],1),3,'w')
-% title('Activation Map with Velocity Vectors')
-% axis image
-% axis off
-% 
-% cv = figure('Name','Conduction Velocity Map');
-% Create Mask
-% actMap_Mask = zeros(size(bg));
-% actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
-% cvMap_Mask = zeros(size(bg));
-% cvMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V;
-% Build the Image
-% G = real2rgb(bg, 'gray');
-% J = real2rgb(cvMap_Mask, 'jet',[min(min(V)) max(max(V))]);
-% A = real2rgb(actMap_Mask, 'gray');
-% I = J .* A + G .* (1-A);
-% subplot(121)
-% image(I)
-% axis off
-% axis image
-% subplot(122)
-% imagesc(V);colormap jet;colorbar
-% axis image
-% axis off
-% title('Conduction Velocity Magnitude')
+Vx = -Tx./(Tx.^2+Ty.^2);
+Vy = -Ty./(Tx.^2+Ty.^2);
+V = sqrt(Vx.^2 + Vy.^2);
+meanV = mean2(V)
+stdV = std2(V)
+meanAng = mean2(atand(Vy./Vx))
+stdAng = std2(atand(Vy./Vx))
+%Plot Map
+cc = figure('Name','Activation Map with Velocity Vectors');
+%Create Mask
+actMap_Mask = zeros(size(bg));
+actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
+%Build the Image
+G = real2rgb(bg, 'gray');
+J = real2rgb(actMap1, 'jet');%,[min(min(temp)) max(max(temp))]);
+A = real2rgb(actMap_Mask, 'gray');
+I = J .* A + G .* (1-A);
+image(I)
+hold on
+%Overlay Conduction Velocity Vectors
+quiver(X,Y,reshape(Vx,[],1),reshape(Vy,[],1),3,'k')
+title('Activation Map with Velocity Vectors')
+axis image
+axis off
+
+cv = figure('Name','Conduction Velocity Map');
+%Create Mask
+actMap_Mask = zeros(size(bg));
+actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
+cvMap_Mask = zeros(size(bg));
+cvMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V;
+%Build the Image
+G = real2rgb(bg, 'gray');
+J = real2rgb(cvMap_Mask, 'jet',[min(min(V)) max(max(V))]);
+A = real2rgb(actMap_Mask, 'gray');
+I = J .* A + G .* (1-A);
+subplot(121)
+image(I)
+axis off
+axis image
+subplot(122)
+imagesc(V);colormap jet;colorbar
+axis image
+axis off
+title('Conduction Velocity Magnitude')
 
 %% Find Conduction Velocity Map - Efimov Method
 % Fit Activation Map with New Surface based on Kernel Smoothing
@@ -285,11 +292,11 @@ end
 
 % Calculate Conduction Velocity
 if ~use_window
-    Vx = Tx./(Tx.^2+Ty.^2);
-    Vy = -Ty./(Tx.^2+Ty.^2);
-    V = sqrt(Vx.^2 + Vy.^2);
+    Vx = Tx./(Tx.^2+Ty.^2); %not being used
+    Vy = -Ty./(Tx.^2+Ty.^2); %not being used
+    V = sqrt(Vx.^2 + Vy.^2); %not being used
 else
-    bad=(V>1); %includeMask CV above 2 m/s
+    bad=(V>1); %includeMask CV above 2 m/s. you set the value
     Vx(bad)=NaN;
     Vy(bad)=NaN;
     V(bad)=NaN;
@@ -421,7 +428,7 @@ handles.activeCamData.saveVy_plot = Vy_plot;
 quiver_step = 2;
 q = quiver(movie_scrn, X_plot(1:quiver_step:end),...
            Y_plot(1:quiver_step:end),Vx_plot(1:quiver_step:end),...
-           -1.0 * Vy_plot(1:quiver_step:end),'w');
+           -1.0 * Vy_plot(1:quiver_step:end),'k');
 q.LineWidth = 2;
 q.AutoScaleFactor = 2;
 set(movie_scrn,'YDir','reverse');
