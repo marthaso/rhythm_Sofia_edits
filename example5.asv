@@ -189,9 +189,7 @@ time = 1:4999;
 
 figure
 plot(time,vector_pixel,time(locs),pks,'o')
-figure
-
-plot(time,norm)
+norm = normalize(vector_pixel);
 %size(pks)
 max(length(pks))
 mean(w)
