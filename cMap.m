@@ -247,13 +247,19 @@ A = real2rgb(mask3, 'gray');
 I = J .* A + G .* (1-A);
 image(I)
 hold on
+
+c = colorbar;
+clim([min(actMap1(:)), max(actMap1(:))]);
+colormap(flipud(jet));
+c.Label.String = 'Activation Time (ms)';
+
 %Overlay Conduction Velocity Vectors
 
 % I need to downsample the velocity MATRIX. also downsample in the SAME WAY
 % the cind matrix. reshape both as a vector and multiply them.
 
 % downsample velocity matrices
-downsample_factor = 4; % Adjust this factor as needed
+downsample_factor = 8; % Adjust this factor as needed
 [rows, cols] = size(Vx);
 % Create index vectors for rows and columns
 row_indices = 1:downsample_factor:rows;
@@ -279,7 +285,7 @@ y_downsampled = reshape(downsampled_ymatrix,[],1);
 
 
 % Plot quiver plot with adjusted size
-quiver(x_downsampled, y_downsampled, new_Vx, new_Vy, 'k', 'LineWidth', 1.5);
+quiver(x_downsampled, y_downsampled, new_Vx, new_Vy, 2, 'k');
 
 
 
@@ -289,22 +295,55 @@ axis off
 
 cv = figure('Name','Conduction Velocity Map');
 %Create Mask
-actMap_Mask = zeros(size(bg));
-actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
-cvMap_Mask = zeros(size(bg));
-cvMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V;
+actMap_Mask = zeros(size(bg)); %zeros matrix the size of your og image
+actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1; % make it 1 in your selected region
+cvMap_Mask = zeros(size(bg)); % zeros matrix the size of your og image
+cvMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V; % plug in the velocity matrix in the selected coordinates
 %cvMap_Mask(mask3) = V;
 %Build the Image
-G = real2rgb(bg, 'gray');
-J = real2rgb(cvMap_Mask, 'jet',[min(min(V)) max(max(V))]);
-A = real2rgb(mask3, 'gray');
+G = real2rgb(bg, 'gray'); % background image
+J = real2rgb(cvMap_Mask, flipud(jet),[min(min(V)) max(max(V))]);
+final_mask = actMap_Mask .* mask3;
+A = real2rgb(final_mask, 'gray');
+%A = real2rgb(actMap_Mask, 'gray');
 I = J .* A + G .* (1-A);
-subplot(121)
+%subplot(121)
+
 image(I)
+c = colorbar;
+colormap(flipud(jet));
+clim([min(cvMap_Mask(:)), max(cvMap_Mask(:))]);
+c.Label.String = 'Conduction Velocity Magnitude (m/s)';
 axis off
 axis image
-subplot(122)
-imagesc(V);colormap jet;colorbar
+figure
+%subplot(122)
+% outside the mask, it should not have a value
+new_mask = mask3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
+new_vel = new_mask .* V;
+new_vel(new_vel == 0) = NaN;
+
+
+
+% Set NaN color to white
+nan_color = [1, 1, 1]; % RGB values for white
+
+% Create a colormap with NaN color
+custom_colormap = colormap(flipud(jet)); % or any other colormap you prefer
+custom_colormap(1, :) = nan_color; % Set the first row of the colormap to NaN color
+colormap(custom_colormap);
+
+% Plot the image with NaN values
+imagesc(new_vel);
+
+c = colorbar;
+%colormap(flipud(jet));
+c.Label.String = 'Conduction Velocity Magnitude (m/s)';
+
+
+
+
+%imagesc(new_vel);colormap jet;colorbar
 axis image
 axis off
 title('Conduction Velocity Magnitude')
