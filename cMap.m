@@ -192,16 +192,23 @@ end
 
 % Fit Activation Map with 3rd-order Polynomial
 if ~use_window %
-    cind = isfinite(croppedAmap);
-    [x, y]= meshgrid(rect(1):rect(1)+rect(3),rect(2):rect(2)+rect(4));
-    x = reshape(x,[],1);
-    y = reshape(y,[],1);
-    z = reshape(croppedAmap,[],1);
-    a = [x.^3 y.^3 x.*y.^2 y.*x.^2 x.^2 y.^2 x.*y x y ones(size(x,1),1)]; % for the whole rectangle
-    X = x(cind);
-    Y = y(cind);
-    Z = z(cind);
-    A = [X.^3 Y.^3 X.*Y.^2 Y.*X.^2 X.^2 Y.^2 X.*Y X Y ones(size(X,1),1)]; % for the active front
+    cind = isfinite(croppedAmap); % find the pixels that have data in the selected rectangle
+    %cind = ones(size(croppedAmap,1), size(croppedAmap,2));
+    [x, y]= meshgrid(rect(1):rect(1)+rect(3),rect(2):rect(2)+rect(4)); % make two matrices the size of
+    % the selected rectangle. each column of x is an x coord. each row of y
+    % is a y coord.
+    x = reshape(x,[],1); % put everything in a vector. you have the first x coordinate repeated, then the second, etc
+    y = reshape(y,[],1); % put everyting in a vector. you have the first y coord, the second, the third, etc, and then repeat that
+    z = reshape(croppedAmap,[],1); % activation times in a vector.
+    a = [x.^3 y.^3 x.*y.^2 y.*x.^2 x.^2 y.^2 x.*y x y ones(size(x,1),1)]; % for the whole rectangle. First column is all the
+    % x coords cubed, the second row the y coords cubed, etc. gives you a
+    % rectangle with the number of pixels x 10 (you are calculating 10
+    % values)
+    X = x(cind); % find which x coords have data. make a vector going pixel by pixel
+    Y = y(cind); % same with y coords
+    Z = z(cind); % same with time
+    A = [X.^3 Y.^3 X.*Y.^2 Y.*X.^2 X.^2 Y.^2 X.*Y X Y ones(size(X,1),1)]; % for the active front. get same values as before but just for
+    % pixels with data
     solution = A\Z; % solution is the set of coefficients
     Z_fit = a*solution; % Z_fit is a polynome surface on the whole rectangle
     Z_fit = reshape(Z_fit,size(cind)); % reshape Z_fit to be rectangle shaped
@@ -231,16 +238,23 @@ stdAng = std2(atand(Vy./Vx))
 cc = figure('Name','Activation Map with Velocity Vectors');
 %Create Mask
 actMap_Mask = zeros(size(bg));
+load('C:\Users\Sofia\Desktop\Optical data - Mice\Heart #3 (WT)\mask3.txt')
 actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
 %Build the Image
 G = real2rgb(bg, 'gray');
 J = real2rgb(actMap1, 'jet');%,[min(min(temp)) max(max(temp))]);
-A = real2rgb(actMap_Mask, 'gray');
+A = real2rgb(mask3, 'gray');
 I = J .* A + G .* (1-A);
 image(I)
 hold on
 %Overlay Conduction Velocity Vectors
-quiver(X,Y,reshape(Vx,[],1),reshape(Vy,[],1),3,'k')
+act_vect = reshape(cind,[],1);
+Vx_vect = reshape(Vx,[],1);
+Vy_vect = reshape(Vy,[],1);
+new_Vx = act_vect .* Vx_vect;
+new_Vy = act_vect .* Vy_vect;
+quiver(x,y,new_Vx,new_Vy,3,'k')
+%quiver(X,Y,reshape(Vx,[],1),reshape(Vy,[],1),3,'k')
 title('Activation Map with Velocity Vectors')
 axis image
 axis off
@@ -251,10 +265,11 @@ actMap_Mask = zeros(size(bg));
 actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
 cvMap_Mask = zeros(size(bg));
 cvMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V;
+%cvMap_Mask(mask3) = V;
 %Build the Image
 G = real2rgb(bg, 'gray');
 J = real2rgb(cvMap_Mask, 'jet',[min(min(V)) max(max(V))]);
-A = real2rgb(actMap_Mask, 'gray');
+A = real2rgb(mask3, 'gray');
 I = J .* A + G .* (1-A);
 subplot(121)
 image(I)
