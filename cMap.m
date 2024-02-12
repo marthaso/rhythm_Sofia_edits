@@ -194,11 +194,11 @@ end
 if ~use_window %
     cind = isfinite(croppedAmap); % find the pixels that have data in the selected rectangle
     %cind = ones(size(croppedAmap,1), size(croppedAmap,2));
-    [x, y]= meshgrid(rect(1):rect(1)+rect(3),rect(2):rect(2)+rect(4)); % make two matrices the size of
+    [x_full, y_full]= meshgrid(rect(1):rect(1)+rect(3),rect(2):rect(2)+rect(4)); % make two matrices the size of
     % the selected rectangle. each column of x is an x coord. each row of y
     % is a y coord.
-    x = reshape(x,[],1); % put everything in a vector. you have the first x coordinate repeated, then the second, etc
-    y = reshape(y,[],1); % put everyting in a vector. you have the first y coord, the second, the third, etc, and then repeat that
+    x = reshape(x_full,[],1); % put everything in a vector. you have the first x coordinate repeated, then the second, etc
+    y = reshape(y_full,[],1); % put everyting in a vector. you have the first y coord, the second, the third, etc, and then repeat that
     z = reshape(croppedAmap,[],1); % activation times in a vector.
     a = [x.^3 y.^3 x.*y.^2 y.*x.^2 x.^2 y.^2 x.*y x y ones(size(x,1),1)]; % for the whole rectangle. First column is all the
     % x coords cubed, the second row the y coords cubed, etc. gives you a
@@ -248,13 +248,41 @@ I = J .* A + G .* (1-A);
 image(I)
 hold on
 %Overlay Conduction Velocity Vectors
-act_vect = reshape(cind,[],1);
-Vx_vect = reshape(Vx,[],1);
-Vy_vect = reshape(Vy,[],1);
-new_Vx = act_vect .* Vx_vect;
-new_Vy = act_vect .* Vy_vect;
-quiver(x,y,new_Vx,new_Vy,3,'k')
-%quiver(X,Y,reshape(Vx,[],1),reshape(Vy,[],1),3,'k')
+
+% I need to downsample the velocity MATRIX. also downsample in the SAME WAY
+% the cind matrix. reshape both as a vector and multiply them.
+
+% downsample velocity matrices
+downsample_factor = 4; % Adjust this factor as needed
+[rows, cols] = size(Vx);
+% Create index vectors for rows and columns
+row_indices = 1:downsample_factor:rows;
+col_indices = 1:downsample_factor:cols;
+% get the downsampled matrices and convert them to vectors
+downsampled_Vx = Vx(row_indices, col_indices);
+Vx_downsampled_vector = reshape(downsampled_Vx,[],1);
+downsampled_Vy = Vy(row_indices, col_indices);
+Vy_downsampled_vector = reshape(downsampled_Vy,[],1);
+downsampled_cind = cind(row_indices, col_indices);
+cind_downsampled_vector = reshape(downsampled_cind,[],1);
+%multiply to get velocity on mask only
+new_Vx = cind_downsampled_vector .* Vx_downsampled_vector;
+new_Vy = cind_downsampled_vector .* Vy_downsampled_vector;
+
+% downsample x coords
+downsampled_xmatrix = x_full(row_indices, col_indices);
+x_downsampled = reshape(downsampled_xmatrix,[],1);
+
+% downsample y coords
+downsampled_ymatrix = y_full(row_indices, col_indices);
+y_downsampled = reshape(downsampled_ymatrix,[],1);
+
+
+% Plot quiver plot with adjusted size
+quiver(x_downsampled, y_downsampled, new_Vx, new_Vy, 'k', 'LineWidth', 1.5);
+
+
+
 title('Activation Map with Velocity Vectors')
 axis image
 axis off
