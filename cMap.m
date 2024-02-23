@@ -229,7 +229,11 @@ end
  % Calculate Conduction Velocity
 Vx = -Tx./(Tx.^2+Ty.^2);
 Vy = -Ty./(Tx.^2+Ty.^2);
+Vx(Vx > 0.9) = NaN;
+Vy(abs(Vy) > 0.7) = NaN;
 V = sqrt(Vx.^2 + Vy.^2);
+V(V > 2.0) = NaN;
+
 meanV = mean2(V)
 stdV = std2(V)
 meanAng = mean2(atand(Vy./Vx))
