@@ -234,11 +234,14 @@ meanV = mean2(V)
 stdV = std2(V)
 meanAng = mean2(atand(Vy./Vx))
 stdAng = std2(atand(Vy./Vx))
+%first figure
 %Plot Map
 cc = figure('Name','Activation Map with Velocity Vectors');
 %Create Mask
 actMap_Mask = zeros(size(bg));
-load('C:\Users\Sofia\Desktop\Optical data - Mice\Heart #3 (WT)\mask3.txt')
+% Your mask needs to be called mask3 (can probably change this). Make sure
+% you are loading the right heart
+load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-001\mask3.txt')
 actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
 %Build the Image
 G = real2rgb(bg, 'gray');
@@ -289,18 +292,22 @@ quiver(x_downsampled, y_downsampled, new_Vx, new_Vy, 2, 'k');
 
 
 
+
 title('Activation Map with Velocity Vectors')
 axis image
 axis off
 
+% second figure 
 cv = figure('Name','Conduction Velocity Map');
 %Create Mask
 actMap_Mask = zeros(size(bg)); %zeros matrix the size of your og image
 actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1; % make it 1 in your selected region
 cvMap_Mask = zeros(size(bg)); % zeros matrix the size of your og image
+V(V > 2.0) = NaN;
 cvMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V; % plug in the velocity matrix in the selected coordinates
 %cvMap_Mask(mask3) = V;
 %Build the Image
+%cvMap_Mask(cvMap_Mask > 0.7) = NaN;
 G = real2rgb(bg, 'gray'); % background image
 J = real2rgb(cvMap_Mask, flipud(jet),[min(min(V)) max(max(V))]);
 final_mask = actMap_Mask .* mask3;
@@ -309,20 +316,29 @@ A = real2rgb(final_mask, 'gray');
 I = J .* A + G .* (1-A);
 %subplot(121)
 
+
+
+
 image(I)
 c = colorbar;
 colormap(flipud(jet));
-clim([min(cvMap_Mask(:)), max(cvMap_Mask(:))]);
+new_mask = mask3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
+new_vel = new_mask .* V;
+new_vel = new_mask .* V;
+new_vel(new_vel == 0) = NaN;
+new_vel(new_vel > 1.0) = NaN;
+clim([min(min(new_vel)), max(max(new_vel))]);
 c.Label.String = 'Conduction Velocity Magnitude (m/s)';
 axis off
 axis image
-figure
+
+figure %last figure
 %subplot(122)
 % outside the mask, it should not have a value
 new_mask = mask3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
 new_vel = new_mask .* V;
 new_vel(new_vel == 0) = NaN;
-
+new_vel(new_vel > 1.0) = NaN;
 
 
 % Set NaN color to white
@@ -337,11 +353,7 @@ colormap(custom_colormap);
 imagesc(new_vel);
 
 c = colorbar;
-%colormap(flipud(jet));
 c.Label.String = 'Conduction Velocity Magnitude (m/s)';
-
-
-
 
 %imagesc(new_vel);colormap jet;colorbar
 axis image
