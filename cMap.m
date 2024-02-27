@@ -234,8 +234,8 @@ Vy(abs(Vy) > 0.7) = NaN;
 V = sqrt(Vx.^2 + Vy.^2);
 V(V > 2.0) = NaN;
 
-meanV = mean2(V)
-stdV = std2(V)
+meanV = nanmean(V,"all")
+stdV = std(V(:),"omitmissing")
 meanAng = mean2(atand(Vy./Vx))
 stdAng = std2(atand(Vy./Vx))
 %first figure
@@ -245,7 +245,7 @@ cc = figure('Name','Activation Map with Velocity Vectors');
 actMap_Mask = zeros(size(bg));
 % Your mask needs to be called mask3 (can probably change this). Make sure
 % you are loading the right heart
-load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-001\mask3.txt')
+load('C:\Users\Sofia\Desktop\Optical data - Mice\Heart #2\mask3.txt')
 actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
 %Build the Image
 G = real2rgb(bg, 'gray');
@@ -264,6 +264,52 @@ c.Label.String = 'Activation Time (ms)';
 
 % I need to downsample the velocity MATRIX. also downsample in the SAME WAY
 % the cind matrix. reshape both as a vector and multiply them.
+
+%the velocity at this point is already only on the selected rectangle. need
+%to go higher
+
+
+% I don't want to change the other code so I will re-calculate conduction
+% velocity using the whole mask.
+
+%% conduction velocity for the quiver plot %%
+
+cind = isfinite(actMap1); % find the pixels that have data in the whole masked image
+[x_full, y_full]= meshgrid(1:length(cind), 1:width(cind)); % make two matrices the size of
+% the image. each column of x is an x coord. each row of y
+% is a y coord.
+x = reshape(x_full,[],1); % put everything in a vector. you have the first x coordinate repeated, then the second, etc
+y = reshape(y_full,[],1); % put everyting in a vector. you have the first y coord, the second, the third, etc, and then repeat that
+z = reshape(actMap1,[],1); % activation times in a vector.
+a = [x.^3 y.^3 x.*y.^2 y.*x.^2 x.^2 y.^2 x.*y x y ones(size(x,1),1)]; % for the whole rectangle. First column is all the
+% x coords cubed, the second row the y coords cubed, etc. gives you a
+% rectangle with the number of pixels x 10 (you are calculating 10
+% values)
+X = x(cind); % find which x coords have data. make a vector going pixel by pixel
+Y = y(cind); % same with y coords
+Z = z(cind); % same with time
+A = [X.^3 Y.^3 X.*Y.^2 Y.*X.^2 X.^2 Y.^2 X.*Y X Y ones(size(X,1),1)]; % for the active front. get same values as before but just for
+% pixels with data
+solution = A\Z; % solution is the set of coefficients
+Z_fit = a*solution; % Z_fit is a polynome surface on the whole rectangle
+Z_fit = reshape(Z_fit,size(cind)); % reshape Z_fit to be rectangle shaped
+
+[Tx, Ty] = gradient(Z_fit);
+Tx=Tx/handles.activeCamData.xres;
+Ty=Ty/handles.activeCamData.yres;
+
+Vx = -Tx./(Tx.^2+Ty.^2);
+Vy = -Ty./(Tx.^2+Ty.^2);
+Vx(Vx > 0.9) = NaN;
+Vy(abs(Vy) > 0.7) = NaN;
+V = sqrt(Vx.^2 + Vy.^2);
+V(V > 2.0) = NaN;
+
+% create mask with rect?
+mask_quivers = zeros(length(cind),width(cind));
+mask_quivers(rect(1):rect(1)+rect(3),rect(2):rect(2)+rect(4)) = 1;
+
+V = V.*mask_quivers;
 
 % downsample velocity matrices
 downsample_factor = 8; % Adjust this factor as needed
@@ -289,6 +335,10 @@ x_downsampled = reshape(downsampled_xmatrix,[],1);
 % downsample y coords
 downsampled_ymatrix = y_full(row_indices, col_indices);
 y_downsampled = reshape(downsampled_ymatrix,[],1);
+
+
+
+
 
 
 % Plot quiver plot with adjusted size

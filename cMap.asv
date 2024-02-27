@@ -229,9 +229,13 @@ end
  % Calculate Conduction Velocity
 Vx = -Tx./(Tx.^2+Ty.^2);
 Vy = -Ty./(Tx.^2+Ty.^2);
+Vx(Vx > 0.9) = NaN;
+Vy(abs(Vy) > 0.7) = NaN;
 V = sqrt(Vx.^2 + Vy.^2);
-meanV = mean2(V)
-stdV = std2(V)
+V(V > 2.0) = NaN;
+
+meanV = nanmean(V,"all")
+stdV = std(V(:),"omitmissing")
 meanAng = mean2(atand(Vy./Vx))
 stdAng = std2(atand(Vy./Vx))
 %first figure
@@ -241,7 +245,7 @@ cc = figure('Name','Activation Map with Velocity Vectors');
 actMap_Mask = zeros(size(bg));
 % Your mask needs to be called mask3 (can probably change this). Make sure
 % you are loading the right heart
-load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-001\mask3.txt')
+load('C:\Users\Sofia\Desktop\Optical data - Mice\Heart #2\mask3.txt')
 actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
 %Build the Image
 G = real2rgb(bg, 'gray');
@@ -260,6 +264,35 @@ c.Label.String = 'Activation Time (ms)';
 
 % I need to downsample the velocity MATRIX. also downsample in the SAME WAY
 % the cind matrix. reshape both as a vector and multiply them.
+
+%the velocity at this point is already only on the selected rectangle. need
+%to go higher
+
+
+% I don't want to change the other code so I will re-calculate conduction
+% velocity using the whole mask.
+
+%% conduction velocity for the quiver plot %%
+
+cind = isfinite(actMap1); % find the pixels that have data in the whole masked image
+[x_full, y_full]= meshgrid(length(cind), width(cind)); % make two matrices the size of
+% the image. each column of x is an x coord. each row of y
+% is a y coord.
+x = reshape(x_full,[],1); % put everything in a vector. you have the first x coordinate repeated, then the second, etc
+y = reshape(y_full,[],1); % put everyting in a vector. you have the first y coord, the second, the third, etc, and then repeat that
+z = reshape(actMap1,[],1); % activation times in a vector.
+a = [x.^3 y.^3 x.*y.^2 y.*x.^2 x.^2 y.^2 x.*y x y ones(size(x,1),1)]; % for the whole rectangle. First column is all the
+% x coords cubed, the second row the y coords cubed, etc. gives you a
+% rectangle with the number of pixels x 10 (you are calculating 10
+% values)
+X = x(cind); % find which x coords have data. make a vector going pixel by pixel
+Y = y(cind); % same with y coords
+Z = z(cind); % same with time
+A = [X.^3 Y.^3 X.*Y.^2 Y.*X.^2 X.^2 Y.^2 X.*Y X Y ones(size(X,1),1)]; % for the active front. get same values as before but just for
+% pixels with data
+solution = A\Z; % solution is the set of coefficients
+Z_fit = a*solution; % Z_fit is a polynome surface on the whole rectangle
+Z_fit = reshape(Z_fit,size(cind)); % reshape Z_fit to be rectangle shaped
 
 % downsample velocity matrices
 downsample_factor = 8; % Adjust this factor as needed
@@ -303,10 +336,11 @@ cv = figure('Name','Conduction Velocity Map');
 actMap_Mask = zeros(size(bg)); %zeros matrix the size of your og image
 actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1; % make it 1 in your selected region
 cvMap_Mask = zeros(size(bg)); % zeros matrix the size of your og image
+V(V > 2.0) = NaN;
 cvMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V; % plug in the velocity matrix in the selected coordinates
 %cvMap_Mask(mask3) = V;
 %Build the Image
-cvMap_Mask(cvMap_Mask > 0.7) = NaN;
+%cvMap_Mask(cvMap_Mask > 0.7) = NaN;
 G = real2rgb(bg, 'gray'); % background image
 J = real2rgb(cvMap_Mask, flipud(jet),[min(min(V)) max(max(V))]);
 final_mask = actMap_Mask .* mask3;
@@ -318,12 +352,15 @@ I = J .* A + G .* (1-A);
 
 
 
-image(I,'scaled')
+image(I)
 c = colorbar;
 colormap(flipud(jet));
 new_mask = mask3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
 new_vel = new_mask .* V;
-clim([0, 0.002]);
+new_vel = new_mask .* V;
+new_vel(new_vel == 0) = NaN;
+new_vel(new_vel > 1.0) = NaN;
+clim([min(min(new_vel)), max(max(new_vel))]);
 c.Label.String = 'Conduction Velocity Magnitude (m/s)';
 axis off
 axis image
@@ -334,6 +371,7 @@ figure %last figure
 new_mask = mask3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
 new_vel = new_mask .* V;
 new_vel(new_vel == 0) = NaN;
+new_vel(new_vel > 1.0) = NaN;
 
 
 % Set NaN color to white
