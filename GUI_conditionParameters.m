@@ -743,66 +743,68 @@ end
             handles.activeCamData.cmosData = normalize_data(handles.activeCamData.cmosData);
             handles.normflag = 1;
             % Sofia Add 
-            mask1 = zeros(256,256);
+%             mask1 = zeros(256,256);
+% 
+%             for i = 1:256
+%                 for j = 1:256
+%                     pixel = handles.activeCamData.cmosData(i,j,1:4999);
+%                     vector_pixel = reshape(pixel, 1, []);
+%                     pks = findpeaks(vector_pixel);
+%                     if max(size(pks)) < 190
+%                         mask1(i,j) = 1;
+%                     end
+%                 end
+%             end
+%             figure
+%             imagesc(mask1)
+% 
+%             %% now try to smooth the mask
+% 
+% 
+% 
+%             %%
+%             % Define the threshold for changing pixel values
+%             threshold = 5;
+% 
+%             % Iterate over each pixel
+%             for i = 2:size(mask1, 1)-1
+%                 for j = 2:size(mask1, 2)-1
+%                     % Extract the current pixel value
+%                     current_pixel = mask1(i, j);
+% 
+%                     % Extract the values of the neighboring pixels
+%                     neighbors = mask1(i-1:i+1, j-1:j+1);
+%                     neighbors = neighbors(:);
+% 
+%                     % Count the number of neighbors with a different value from the current pixel
+%                     different_neighbors = sum(neighbors ~= current_pixel);
+% 
+%                     % If five or more neighbors are different, change the current pixel value
+%                     if different_neighbors >= threshold
+%                         mask1(i, j) = ~current_pixel; % Toggle the value
+%                     end
+%                 end
+%             end
+% 
+%             figure
+%             imagesc(mask1)
+%             %mask = mask1;
+%             handles.activeCamData.cmosData =...
+%                 handles.activeCamData.cmosData.* repmat(mask1,...
+%                    [1 1 size(handles.activeCamData.cmosData, 3)]);
+         end
+% 
+%         %% Delete the progress bar
+%         % Extract the 3D array
+%         %arrayToSave = handles.activeCamData.cmosData;
+% 
+% % Save the array to a file
+%         %save('arrayFile.mat', 'arrayToSave');
+%         filename_default = strcat(handles.dir,'/mask.txt');
+%         [filename, path] = uiputfile('*.txt', 'Save mask', filename_default);
+%         save(strcat(path,filename), 'mask1', '-ascii', '-tabs');
 
-            for i = 1:256
-                for j = 1:256
-                    pixel = handles.activeCamData.cmosData(i,j,1:4999);
-                    vector_pixel = reshape(pixel, 1, []);
-                    pks = findpeaks(vector_pixel);
-                    if max(size(pks)) < 190
-                        mask1(i,j) = 1;
-                    end
-                end
-            end
-            figure
-            imagesc(mask1)
-
-            %% now try to smooth the mask
-
-            
-
-            %%
-            % Define the threshold for changing pixel values
-            threshold = 5;
-
-            % Iterate over each pixel
-            for i = 2:size(mask1, 1)-1
-                for j = 2:size(mask1, 2)-1
-                    % Extract the current pixel value
-                    current_pixel = mask1(i, j);
-
-                    % Extract the values of the neighboring pixels
-                    neighbors = mask1(i-1:i+1, j-1:j+1);
-                    neighbors = neighbors(:);
-
-                    % Count the number of neighbors with a different value from the current pixel
-                    different_neighbors = sum(neighbors ~= current_pixel);
-
-                    % If five or more neighbors are different, change the current pixel value
-                    if different_neighbors >= threshold
-                        mask1(i, j) = ~current_pixel; % Toggle the value
-                    end
-                end
-            end
-
-            figure
-            imagesc(mask1)
-            %mask = mask1;
-            handles.activeCamData.cmosData =...
-                handles.activeCamData.cmosData.* repmat(mask1,...
-                   [1 1 size(handles.activeCamData.cmosData, 3)]);
-        end
-                
-        %% Delete the progress bar
-        % Extract the 3D array
-        %arrayToSave = handles.activeCamData.cmosData;
-
-% Save the array to a file
-        %save('arrayFile.mat', 'arrayToSave');
-        filename_default = strcat(handles.dir,'/mask.txt');
-        [filename, path] = uiputfile('*.txt', 'Save mask', filename_default);
-        save(strcat(path,filename), 'mask1', '-ascii', '-tabs');
+        % here
 
          %if you want to go to the normal background, uncomment the next
             %three lines

@@ -274,54 +274,73 @@ c.Label.String = 'Activation Time (ms)';
 
 %% conduction velocity for the quiver plot %%
 
-cind = isfinite(actMap1); % find the pixels that have data in the whole masked image
-[x_full, y_full]= meshgrid(length(cind), width(cind)); % make two matrices the size of
+cind1 = isfinite(actMap1); % find the pixels that have data in the whole masked image
+[x_full1, y_full1]= meshgrid(1:length(cind1), 1:width(cind1)); % make two matrices the size of
 % the image. each column of x is an x coord. each row of y
 % is a y coord.
-x = reshape(x_full,[],1); % put everything in a vector. you have the first x coordinate repeated, then the second, etc
-y = reshape(y_full,[],1); % put everyting in a vector. you have the first y coord, the second, the third, etc, and then repeat that
-z = reshape(actMap1,[],1); % activation times in a vector.
-a = [x.^3 y.^3 x.*y.^2 y.*x.^2 x.^2 y.^2 x.*y x y ones(size(x,1),1)]; % for the whole rectangle. First column is all the
+x1 = reshape(x_full1,[],1); % put everything in a vector. you have the first x coordinate repeated, then the second, etc
+y1 = reshape(y_full1,[],1); % put everyting in a vector. you have the first y coord, the second, the third, etc, and then repeat that
+z1 = reshape(actMap1,[],1); % activation times in a vector.
+a1 = [x1.^3 y1.^3 x1.*y1.^2 y1.*x1.^2 x1.^2 y1.^2 x1.*y1 x1 y1 ones(size(x1,1),1)]; % for the whole rectangle. First column is all the
 % x coords cubed, the second row the y coords cubed, etc. gives you a
 % rectangle with the number of pixels x 10 (you are calculating 10
 % values)
-X = x(cind); % find which x coords have data. make a vector going pixel by pixel
-Y = y(cind); % same with y coords
-Z = z(cind); % same with time
-A = [X.^3 Y.^3 X.*Y.^2 Y.*X.^2 X.^2 Y.^2 X.*Y X Y ones(size(X,1),1)]; % for the active front. get same values as before but just for
+X1 = x1(cind1); % find which x coords have data. make a vector going pixel by pixel
+Y1 = y1(cind1); % same with y coords
+Z1 = z1(cind1); % same with time
+A1 = [X1.^3 Y1.^3 X1.*Y1.^2 Y1.*X1.^2 X1.^2 Y1.^2 X1.*Y1 X1 Y1 ones(size(X1,1),1)]; % for the active front. get same values as before but just for
 % pixels with data
-solution = A\Z; % solution is the set of coefficients
-Z_fit = a*solution; % Z_fit is a polynome surface on the whole rectangle
-Z_fit = reshape(Z_fit,size(cind)); % reshape Z_fit to be rectangle shaped
+solution1 = A1\Z1; % solution is the set of coefficients
+Z_fit1 = a1*solution1; % Z_fit is a polynome surface on the whole rectangle
+Z_fit1 = reshape(Z_fit1,size(cind1)); % reshape Z_fit to be rectangle shaped
+
+[Tx1, Ty1] = gradient(Z_fit1);
+Tx1=Tx1/handles.activeCamData.xres;
+Ty1=Ty1/handles.activeCamData.yres;
+
+Vx1 = -Tx1./(Tx1.^2+Ty1.^2);
+Vy1 = -Ty1./(Tx1.^2+Ty1.^2);
+Vx1(Vx1 > 0.9) = NaN;
+Vy1(abs(Vy1) > 0.7) = NaN;
+V1 = sqrt(Vx1.^2 + Vy1.^2);
+V1(V1 > 2.0) = NaN;
+
 
 % downsample velocity matrices
 downsample_factor = 8; % Adjust this factor as needed
-[rows, cols] = size(Vx);
+[rows1, cols1] = size(Vx1);
 % Create index vectors for rows and columns
-row_indices = 1:downsample_factor:rows;
-col_indices = 1:downsample_factor:cols;
+row_indices1 = 1:downsample_factor:rows1;
+col_indices1 = 1:downsample_factor:cols1;
 % get the downsampled matrices and convert them to vectors
-downsampled_Vx = Vx(row_indices, col_indices);
-Vx_downsampled_vector = reshape(downsampled_Vx,[],1);
-downsampled_Vy = Vy(row_indices, col_indices);
-Vy_downsampled_vector = reshape(downsampled_Vy,[],1);
-downsampled_cind = cind(row_indices, col_indices);
-cind_downsampled_vector = reshape(downsampled_cind,[],1);
+downsampled_Vx1 = Vx1(row_indices1, col_indices1);
+Vx_downsampled_vector1 = reshape(downsampled_Vx1,[],1);
+downsampled_Vy1 = Vy1(row_indices1, col_indices1);
+Vy_downsampled_vector1 = reshape(downsampled_Vy1,[],1);
+downsampled_cind1 = cind1(row_indices1, col_indices1);
+cind_downsampled_vector1 = reshape(downsampled_cind1,[],1);
 %multiply to get velocity on mask only
-new_Vx = cind_downsampled_vector .* Vx_downsampled_vector;
-new_Vy = cind_downsampled_vector .* Vy_downsampled_vector;
+new_Vx1 = cind_downsampled_vector1 .* Vx_downsampled_vector1;
+new_Vy1 = cind_downsampled_vector1 .* Vy_downsampled_vector1;
 
 % downsample x coords
-downsampled_xmatrix = x_full(row_indices, col_indices);
+downsampled_xmatrix1 = x_full1(row_indices, col_indices);
 x_downsampled = reshape(downsampled_xmatrix,[],1);
+x_downsampled(x_downsampled < rect(1) | x_downsampled > rect(1) + rect(3)) = NaN;
 
 % downsample y coords
 downsampled_ymatrix = y_full(row_indices, col_indices);
 y_downsampled = reshape(downsampled_ymatrix,[],1);
+y_downsampled(y_downsampled < rect(2) | y_downsampled > rect(2) + rect(4)) = NaN;
+
+
+
+
+
 
 
 % Plot quiver plot with adjusted size
-quiver(x_downsampled, y_downsampled, new_Vx, new_Vy, 2, 'k');
+quiver_plot = quiver(x_downsampled, y_downsampled, new_Vx, new_Vy, 2, 'k');
 
 
 
