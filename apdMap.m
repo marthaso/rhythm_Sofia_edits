@@ -55,7 +55,19 @@ APD_max_rescaled = maxapd * Fs / 1000;
 
 AP_level = 1.0 - percentAPD / 100;
 
-area_coords = int8(area_coords);
+%area_coords = [105, 101, 57, 58]  ;
+%area_coords = [55, 126, 57, 58]  ;
+%area_coords = [105, 71, 57, 58]  ;
+%area_coords = [55, 96, 57, 58]  ;
+%area_coords = [5, 5, 200, 200]  ;
+%area_coords = [100, 80, 50, 50]  ;
+%area_coords = [150, 68, 35, 35]  ;
+area_coords = [100, 93, 35, 35]  ;
+
+
+
+%area_coords = int8(area_coords);
+area_coords = round(area_coords);
 j_min = 1 + area_coords(1);
 i_min = 1 + area_coords(2);
 j_max = area_coords(1) + area_coords(3);
@@ -86,6 +98,7 @@ apdMap = apdMap * unitFix;
 %% Plot APDMap
 handles.activeCamData.saveData = apdMap;
 
+
 cla(movie_scrn);
 
 colormap(handles.activeScreen, cmap);
@@ -99,6 +112,39 @@ set(movie_scrn,'YTick',[],'XTick',[]);
 APD_min = prctile(apdMap(isfinite(apdMap)),1);
 APD_max = prctile(apdMap(isfinite(apdMap)),99);
 caxis(movie_scrn,[APD_min APD_max])
+
+figure;
+%ax1 = axes;
+image(handles.activeCamData.bgRGB);
+%colormap(ax1,'gray');
+%ax2 = axes;
+hold on
+imagesc(apdMap,'AlphaData',~isnan(apdMap));
+colormap('jet');
+colorbar;
+
+figure
+apdMap_V = load('apdMap_V.mat','apdMap');
+apdMap_V = cell2mat(struct2cell(apdMap_V));
+apdV = apdMap_V(68:103, 150:185);
+apdV_mat = nan(256,256);
+apdV_mat(93:128, 100:135) = apdV;
+%ax1 = axes;
+image(handles.activeCamData.bgRGB);
+%colormap(ax1,'gray');
+%ax2 = axes;
+hold on
+imagesc(apdV_mat,'AlphaData',~isnan(apdV_mat));
+colormap('jet');
+colorbar;
+
+figure
+diff_time = apdMap - apdV_mat;
+image(handles.activeCamData.bgRGB);
+hold on
+imagesc(diff_time,'AlphaData',~isnan(diff_time));
+colormap('jet');
+colorbar;
 
 %% Plot Histogram of APDMap
 %figure('Name','Histogram of APD')

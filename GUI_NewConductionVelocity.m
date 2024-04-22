@@ -379,15 +379,15 @@ end
             figure
             sz=size(handles.activeCamData.saveData);
 
-            quiver_step_x = 5; % Step size for x direction
-            quiver_step_y = 5; % Step size for y direction (adjust as needed)
+            quiver_step_x = 1; % Step size for x direction
+            quiver_step_y = 1; % Step size for y direction (adjust as needed)
 
-            quiver_step = 5;
+            quiver_step = 1;
             q = quiver(handles.activeCamData.saveX_plot(1:quiver_step_x:end),...
                    sz(2)-handles.activeCamData.saveY_plot(1:quiver_step_y:end),...
                    handles.activeCamData.saveVx_plot(1:quiver_step_x:end), ...
                    handles.activeCamData.saveVy_plot(1:quiver_step_y:end),'k');
-            q.LineWidth = 2;
+            q.LineWidth = 1;
             q.AutoScaleFactor = 2;
             hold off;
 

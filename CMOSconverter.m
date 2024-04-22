@@ -221,6 +221,7 @@ if strcmp(oldfilename(end-2:end),'gsh')
     bgimage = fread(fid,xPixels*yPixels,'short');
     bgimage = reshape(bgimage,[xPixels yPixels])';
     bgimage = bgimage(ySkipPix+1:ySkipPix+yActPix,xSkipPix+1:xSkipPix+xActPix);
+    bgimage = fliplr(bgimage);
     % Grab optical data
     cmosData = fread(fid,xPixels*yPixels*numFrames,'short');
     cmosData = reshape(cmosData,[xPixels yPixels numFrames]);
@@ -230,6 +231,7 @@ if strcmp(oldfilename(end-2:end),'gsh')
         % For some reason images taken with D225 cameras need to be rotated
         cmosData = flip(rot90(cmosData,3),2);
     end
+    cmosData = fliplr(cmosData);
     % Analog inputs
     channel = cell(nChanum,1);
     status = fseek(fid,972+xPixels*yPixels*2*numFrames+25600,'bof');
