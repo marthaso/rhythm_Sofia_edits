@@ -1434,9 +1434,9 @@ handles.cmap = colormap('Jet'); %saves the default colormap values
                 Mframe = handles.activeCamData.cmosPhase(:,:,i);
                 signal_current = squeeze(handles.activeCamData.cmosPhase(x_coord,y_coord,start:endtime));
             end
-            plot(handles.time(start:endtime),signal_current, 'LineWidth',1.5);
+            %plot(handles.time(start:endtime),signal_current, 'LineWidth',1.5);
             %
-            axis([handles.time(start) handles.time(end) min(signal_current) max(signal_current)]);
+            %axis([handles.time(start) handles.time(end) min(signal_current) max(signal_current)]);
             % Set the xick mark to start from zero
             xlabel('Time (sec)');hold on
             % Image movie frames on the top subplot

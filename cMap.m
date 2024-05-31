@@ -1,333 +1,566 @@
 function [cMap] = cMap(data,stat,endp,Fs,bg,rect, f, movie_scrn, handles)
 
-%% Code
 
-%% Find Activation Times for Polynomial Surface
-stat=round(stat*Fs)+1;
-endp=round(endp*Fs)+1;
-actMap = zeros(size(data,1),size(data,2));
-dataCroppedInTime = data(:,:,stat:endp); % truncate data
+%% my try
 
-% Re-normalize data in case of drift
-dataCroppedInTime = normalize_data(dataCroppedInTime);
+[actMap1, mask] = activationmap(stat, Fs, endp, data);
 
-% identify channels that have been zero-ed out due to noise
-mask = max(dataCroppedInTime,[],3) > 0;
-
-% Find First Derivative and time of maxium
-derivatives = diff(dataCroppedInTime,1,3); % first derivative
-[~,max_i] = max(derivatives,[],3); % find location of max derivative
-
-% Create Activation Map
-actMap1 = max_i.*mask;
-actMap1(actMap1 == 0) = nan;
-offset1 = min(min(actMap1));
-actMap1 = actMap1 - offset1*ones(size(data,1),size(data,2));
-actMap1 = actMap1/Fs*1000; %% time in ms
-
-%% Find Conduction Velocity Map - Bayly Method
-% Isolate ROI Specified by RECT
+% Conduction Velocity Calculation
 rect = round(rect);
-rect = abs(rect)
+rect = abs(rect);
+[xx, yy] = meshgrid(rect(1):rect(1)+rect(3), rect(2):rect(2)+rect(4));
+xx = reshape(xx,[],1);
+yy = reshape(yy,[],1);
 croppedAmap = actMap1(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
-%exclude everything, but activation front
+t = reshape(croppedAmap,[],1);
 
-use_window=1; % use windowed least-squares fitting
+xyt = [xx yy t];
+M = size(xyt,1);
+xres = 0.04167;
+yres = 0.04167;
 
-if use_window
-    [xx yy]= meshgrid(rect(1):rect(1)+rect(3),rect(2):rect(2)+rect(4));
-    xx = reshape(xx,[],1);
-    yy = reshape(yy,[],1);
-    t = reshape(croppedAmap,[],1);
+for space = 30
+    for time_wind = 10
+        [XYT] = xyt_matrix(M,xyt,space,time_wind,xres,yres);
 
-    xyt = [xx yy t];
+        for max_Vx = 100
+            [Vx, Vy, V] = vel_calc(XYT,max_Vx,max_Vx);
 
-    M=size(xyt,1);
-    XYT=zeros(M,17);
+            for ds_fac = 6
+                [X, Y, U, V] = downsample(croppedAmap,xx,yy,Vx,Vy,ds_fac);
 
-    space_window_width =  2./ handles.activeCamData.xres; % mm space frame 
-    time_window_width = 5 * handles.Fs / 1000; % time frame 
-    how_many = 10; % why???
-    for i=1:M
-       % ������� ������� ���������� i-��� ����� �� ���� ���������
-       dx=abs(xyt(:,1)-xyt(i,1));
-       dy=abs(xyt(:,2)-xyt(i,2));
-       dt=abs(xyt(:,3)-xyt(i,3));
-       %find dx dy dt 
-       %------------------------------------------------------------------------
+                for auto = 2
 
-       near=find((sqrt(dx.^2+dy.^2)<=space_window_width)&(isfinite(xyt(:,3))));
-       len=length(near);
-       %specify the points by using the points that are close enough
-       %------------------------------------------------------------------------
+                    figure
 
-       if len>how_many
-            xyn=xyt(near,1:2)-ones(len,1)*xyt(i,1:2); % centered around the i-th point
-            x=xyn(:,1)*handles.activeCamData.xres/1000;%unit of X,Y are mM
-            y=xyn(:,2)*handles.activeCamData.yres/1000;
-            t=xyt(near,3);
-            %find dx dy dt of the specific points that are acceptable
-            %------------------------------------------------------------------------
-            fit     = [ones(len,1) x y x.^2 y.^2 x.*y x.^3 y.^3 x.*y.^2 y.*x.^2]; % on the windowed area
-            coefs   = fit\t;
-            resi    = sqrt(sum((t-fit*coefs).^2)/sum(t.^2));
-            resilin = sqrt(sum((t-fit(:,1:3)*coefs(1:3)).^2)/sum(t.^2));
-            XYT(i,:)= [xyt(i,:),coefs',resi,len,cond(fit),resilin];
-       end
+                    G = real2rgb(bg, 'gray');
+                    imagesc(G)
+                    hold on
+                    imagesc(actMap1, 'AlphaData', mask)
+                    colormap(flipud(jet));
+                    c = colorbar;
+
+                    hold on
+
+                    q = quiver(X,Y,U,V, auto , 'k')
+                    title('Activation Map')
+                    c.Label.String = 'Activation Time (ms)';
+                    axis off
+
+                end
+            end
+        end
+    end
+end
+
+
+
+
+% now you have the polynomial for your surface. I noticed that most
+% coefficients are zero or close to zero except for those multiplying x
+% and y. Due to this, the derivative of the function wrt x is simply
+% the coefficient, same with y. This feels like an oversimplification
+% but rhythm people also do it so I am going to go with it.
+
+% to find Vx, we need to do Tx / (Tx2 + Ty2) where Tx is the derivative
+% wrt x, in this case the 7th coefficient and Ty is the derivative wrt
+% y, in this case the 8th coefficient
+
+
+% length_rect = size(croppedAmap,1);
+% width_rect = size(croppedAmap,2);
+% X_plot_rect = reshape(xx,[length_rect,width_rect]);
+% Y_plot_rect = reshape(yy,[length_rect,width_rect]);
+% Vx_plot_rect = reshape(Vx,[length_rect,width_rect]);
+% Vy_plot_rect = reshape(Vy,[length_rect,width_rect]);
+% downsample_factor = 8;
+% %Create index vectors for rows and columns
+% row_indices1 = 1:downsample_factor:length_rect;
+% col_indices1 = 1:downsample_factor:width_rect;
+% % get the downsampled matrices and convert them to vectors
+% downsampled_Vx1 = Vx_plot_rect(row_indices1, col_indices1);
+% Vx_downsampled_vector1 = reshape(downsampled_Vx1,[],1);
+% downsampled_Vy1 = Vy_plot_rect(row_indices1, col_indices1);
+% Vy_downsampled_vector1 = reshape(downsampled_Vy1,[],1);
+% downsampled_X_plot = X_plot_rect(row_indices1, col_indices1);
+% X_plot_downsampled_vector1 = reshape(downsampled_X_plot,[],1);
+% downsampled_Y_plot = Y_plot_rect(row_indices1, col_indices1);
+% Y_plot_downsampled_vector1 = reshape(downsampled_Y_plot,[],1);
+
+% hold on
+% %q = quiver(xx(1:3:end),yy(1:3:end),Vx(1:3:end),Vy(1:3:end),'k')
+% q = quiver(X_plot_downsampled_vector1, Y_plot_downsampled_vector1, Vx_downsampled_vector1, Vy_downsampled_vector1, 3, 'k')
+%
+
+% make many figures at once
+
+
+    function [X, Y, U, V] = downsample(croppedAmap,xx,yy,Vx,Vy,downsample_factor)
+
+        length_rect = size(croppedAmap,1);
+        width_rect = size(croppedAmap,2);
+        X_plot_rect = reshape(xx,[length_rect,width_rect]);
+        Y_plot_rect = reshape(yy,[length_rect,width_rect]);
+        Vx_plot_rect = reshape(Vx,[length_rect,width_rect]);
+        Vy_plot_rect = reshape(Vy,[length_rect,width_rect]);
+        % downsample_factor = 8;
+        %Create index vectors for rows and columns
+        row_indices1 = 1:downsample_factor:length_rect;
+        col_indices1 = 1:downsample_factor:width_rect;
+        % get the downsampled matrices and convert them to vectors
+        downsampled_Vx1 = Vx_plot_rect(row_indices1, col_indices1);
+        U = reshape(downsampled_Vx1,[],1);
+        downsampled_Vy1 = Vy_plot_rect(row_indices1, col_indices1);
+        V = reshape(downsampled_Vy1,[],1);
+        downsampled_X_plot = X_plot_rect(row_indices1, col_indices1);
+        X = reshape(downsampled_X_plot,[],1);
+        downsampled_Y_plot = Y_plot_rect(row_indices1, col_indices1);
+        Y = reshape(downsampled_Y_plot,[],1);
+
     end
 
-    cropped = max(dataCroppedInTime(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3),:), [], 3);
-    %cropped = dataCroppedInTime(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3),1);
-    croppedResized = reshape(cropped, [], 1);
+    function [XYT] = xyt_matrix(M,xyt,space_window_width,time_window_width,xres,yres)
 
-    was_fitted=find( (XYT(:,1)~=0) & (XYT(:,2)~=0) & (croppedResized(:) > 0)); % if XYT was not filled or point not inside of segmented region
-    XYT=XYT(was_fitted,:);
+        XYT = zeros(M,10);
 
-    % coef_x / (coef_x^2 + coef_y^2) * TODO multiplier????
-    Vx=(XYT(:,5)./(XYT(:,5).^2 + XYT(:,6).^2))*1000;%handles.activeCamData.xres; 
-    % coef_y / (coef_y^2 + coef_y^2) * TODO multiplier????
-    Vy=-(XYT(:,6)./(XYT(:,5).^2 + XYT(:,6).^2))*1000;%handles.activeCamData.yres; 
+        for num_pix = 1:M %go through each pixel
 
-    V=sqrt(Vx.^2+Vy.^2);
-end         
+            % Find how far spatially and temporally each pixel is from the one you
+            % are evaluating
 
-%Calculate Conduction Velocity
-if ~use_window
-    Vx = Tx./(Tx.^2+Ty.^2);
-    Vy = -Ty./(Tx.^2+Ty.^2);
-    V = sqrt(Vx.^2 + Vy.^2);
-else
-    bad=(V>5); %includeMask CV above 2 m/s
-    Vx(bad)=NaN;
-    Vy(bad)=NaN;
-    V(bad)=NaN;
-end
+            dx = abs(xyt(:,1)-xyt(num_pix,1));
+            dy=abs(xyt(:,2)-xyt(num_pix,2));
+            dt=abs(xyt(:,3)-xyt(num_pix,3));
 
-% Display the regional statistics
-disp('Regional conduction velocity statistics:')
-meanV=nanmean(V(isfinite(V)));
-disp(['The mean value is ' num2str(meanV) ' m/s.'])
-medV = median(V(isfinite(V)));
-disp(['The median value is ' num2str(medV) ' m/s.'])
-stdV = std2(V(isfinite(V)));
-disp(['The standard deviation is ' num2str(stdV) '.'])
-meanAng = mean(atan2(Vy(isfinite(Vy)),Vx(isfinite(Vy))).*180/pi);
-disp(['The mean angle is ' num2str(meanAng) ' degrees.'])
-medAng = median(atan2(Vy(isfinite(Vy)),Vx(isfinite(Vy))).*180/pi);
-disp(['The median angle is ' num2str(medAng) ' degrees.'])
-stdAng = std2(atan2(Vy(isfinite(Vy)),Vx(isfinite(Vy))).*180/pi);
-disp(['The standard deviation of the angle is ' num2str(stdAng) '.'])
-num_vectors = numel(V(isfinite(V)));
-disp(['The number of vectors is ' num2str(num_vectors) '.'])
+            % Find the pixels near your pixel
 
-        % statistics window
-       handles.activeCamData.meanresults = sprintf('Mean: %0.3f',meanV);
-       handles.activeCamData.medianresults  = sprintf('Median: %0.3f',medV);
-       handles.activeCamData.SDresults = sprintf('S.D.: %0.3f',stdV);
-       handles.activeCamData.num_membersresults = sprintf('#Members: %d',num_vectors);
-       handles.activeCamData.angleresults = sprintf('Angle: %d',meanAng);
+            near = find ((sqrt(dx.^2 + dy.^2) <= space_window_width) & (isfinite(xyt(:,3))) & (dt <= time_window_width));
 
-       set(handles.meanresults,'String',handles.activeCamData.meanresults);
-       set(handles.medianresults,'String',handles.activeCamData.medianresults);
-       set(handles.SDresults,'String',handles.activeCamData.SDresults);
-       set(handles.num_members_results,'String',handles.activeCamData.num_membersresults);
-       set(handles.angleresults,'String',handles.activeCamData.angleresults);
+            %
 
-handles.activeCamData.saveData = actMap1;
-% Plot Results
-cla(movie_scrn); 
-%compute isolines
+            % xyt(near, 1:2) - get the x and y coord of each near pixel
+            % ones(length(near),1) - make a vector of 1s the size of the number of
+            % near pixels
+            % xyt(i, 1:2) - get the x and y coords of your pixel
+            % substract your pixel's location from all the near neighbors. make a
+            % vector which says for each near pixel, how far (x and y) it is from
+            % your pixel
+            xyn = xyt(near, 1:2) - ones(length(near),1) * xyt(num_pix,1:2);
 
-[C,h] = contourf(movie_scrn, actMap1,(endp-stat)/2, 'LineColor','k');
+            % convert pixel distance to physical distance. xres and yres are user
+            % inputs
 
+            x = xyn(:,1) * xres;
+            y = xyn(:,2) * yres;
+            time = xyt(near,3);
 
-%caxis(movie_scrn,[stat endp]);
-contourcmap('copper','SourceObject', movie_scrn, 'ColorAlignment', 'center');
-%colorbar(movie_scrn);
-set(movie_scrn,'YTick',[],'XTick',[]);
+            % create your A matrix. (look at powerpoint for more info)
 
+            fit = [x.^2  y.^2  x.*y  x  y  ones(length(near),1)];
 
-hold (movie_scrn,'on')
+            % find coefficienta (a-f) such that Aa=t. these are your a-f
 
-%Y_plot = size(data,1)+1 - y(isfinite(Z_fit));
-if ~use_window
-    Y_plot = y(isfinite(Z_fit));
-    X_plot = x(isfinite(Z_fit));
-    Vx_plot = Vx(isfinite(Z_fit));
-else
-    Y_plot = yy(was_fitted);
-    X_plot = xx(was_fitted);
-    Vx_plot = Vx;
-end
-Vx_plot(abs(Vx_plot) > 5) = 5.*sign(Vx_plot(abs(Vx_plot) > 5));
-if ~use_window
-    Vy_plot = Vy(isfinite(Z_fit));
-else
-    Vy_plot = Vy;%(was_fitted,1);
-end
-Vy_plot(abs(Vy_plot) > 5) = 5.*sign(Vy_plot(abs(Vy_plot) > 5));
-V = sqrt(Vx_plot.^2 + Vy_plot.^2);
+            coefs = fit\time;
 
-%Create Vector Array to pass to following functions
-VecArray = [X_plot Y_plot Vx_plot Vy_plot V];
-handles.activeCamData.VecArray = VecArray;
-length_rect = size(croppedAmap,1)
-width_rect = size(croppedAmap,2)
-X_plot_rect = reshape(X_plot,[length_rect,width_rect]);
-Y_plot_rect = reshape(Y_plot,[length_rect,width_rect]);
-Vx_plot_rect = reshape(Vx_plot,[length_rect,width_rect]);
-Vy_plot_rect = reshape(Vy_plot,[length_rect,width_rect]);
-downsample_factor = 6;
-%Create index vectors for rows and columns
-row_indices1 = 1:downsample_factor:length_rect;
-col_indices1 = 1:downsample_factor:width_rect;
-% get the downsampled matrices and convert them to vectors
-downsampled_Vx1 = Vx_plot_rect(row_indices1, col_indices1);
-Vx_downsampled_vector1 = reshape(downsampled_Vx1,[],1);
-downsampled_Vy1 = Vy_plot_rect(row_indices1, col_indices1);
-Vy_downsampled_vector1 = reshape(downsampled_Vy1,[],1);
-downsampled_X_plot = X_plot_rect(row_indices1, col_indices1);
-X_plot_downsampled_vector1 = reshape(downsampled_X_plot,[],1);
-downsampled_Y_plot = Y_plot_rect(row_indices1, col_indices1);
-Y_plot_downsampled_vector1 = reshape(downsampled_Y_plot,[],1);
-Vx_downsampled_vector1(abs(Vx_downsampled_vector1)>2) = NaN;
-Vy_downsampled_vector1(abs(Vy_downsampled_vector1)>2) = NaN;
+            % find error. not sure why they use this specific error and what a
+            % meaningful number would be. we want it to be small.
 
-% X_plot1 = X_plot(1:1:length(X_plot));
-% Y_plot1 = Y_plot(1:1:length(Y_plot));
-% Vx_plot1 = Vx_plot(1:1:length(Vx_plot));
-% Vy_plot1 = Vy_plot(1:1:length(Vy_plot));
-% Vx_plot1(abs(Vx_plot1)>2) = NaN;
-% Vy_plot1(abs(Vy_plot1)>2) = NaN;
+            resi    = sqrt(sum((time-fit*coefs).^2)/sum(time.^2));
 
+            % store coords of pixel, time, coefs, and error
 
-%data for saving
-handles.activeCamData.saveX_plot = X_plot_downsampled_vector1;
-handles.activeCamData.saveY_plot = Y_plot_downsampled_vector1;
-handles.activeCamData.saveVx_plot = Vx_downsampled_vector1;
-handles.activeCamData.saveVy_plot = Vy_downsampled_vector1;
+            XYT(num_pix,:) = [xyt(num_pix,:), coefs',resi];
+        end
+    end
 
-% plot vector field
-quiver_step = 1;
-q = quiver(movie_scrn, X_plot_downsampled_vector1(1:quiver_step:end),...
-           Y_plot_downsampled_vector1(1:quiver_step:end),Vx_downsampled_vector1(1:quiver_step:end),...
-           -1.0 * Vy_downsampled_vector1(1:quiver_step:end),'k');
-q.LineWidth = 1;
-q.AutoScaleFactor = 2;
-set(movie_scrn,'YDir','reverse');
+    function [Vx, Vy, V] = vel_calc(XYT,max_Vx,max_Vy)
 
-hold (movie_scrn,'off');
+        Vx = (XYT(:,7)./(XYT(:,7).^2 + XYT(:,8).^2))*100; % times 100 to go from mm/msec to cm/sec
+        Vy = (XYT(:,8)./(XYT(:,7).^2 + XYT(:,8).^2))*100;
+        Vx(abs(Vx) > max_Vx) = NaN;
+        Vy(abs(Vy) > max_Vy) = NaN;
+        % standard_dev = std(Vx);
+        % standard_dev_y = std(Vy);
+        % Vx(abs(Vx) > standard_dev*2) = NaN;
+        % Vy(abs(Vy) > standard_dev_y*2) = NaN;
+        V = sqrt(Vx.^2+Vy.^2);
+    end
 
-%first figure
-%Plot Map
-cc = figure('Name','Activation Map with Velocity Vectors');
-%Create Mask
-actMap_Mask = zeros(size(bg));
-% Your mask needs to be called mask3 (can probably change this). Make sure
-% you are loading the right heart
-%load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-001\mask3.txt')
-%load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-002\mask3.txt')
-%load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-003\mask3.txt')
-load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-004\mask3.txt')
-actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
-%Build the Image
-G = real2rgb(bg, 'gray');
+    function [actMap1, mask] = activationmap(stat, Fs, endp, data)
 
-%% activation map just for rectangle
-croppedAmap(croppedAmap == 0) = nan;
-offset1 = min(min(croppedAmap));
-croppedAmap = croppedAmap - offset1*ones(size(croppedAmap,1),size(croppedAmap,2));
-actMap1 = croppedAmap/Fs*1000; %% time in ms
-new_actMap1 = zeros(256,256);
-new_actMap1(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = actMap1;
+        stat=round(stat*Fs)+1;
+        endp=round(endp*Fs)+1;
+        %actMap = zeros(size(data,1),size(data,2));
+        dataCroppedInTime = data(:,:,stat:endp); % truncate data
 
+        % Re-normalize data in case of drift
+        dataCroppedInTime = normalize_data(dataCroppedInTime);
 
-J = real2rgb(-new_actMap1, 'jet');%,[min(min(temp)) max(max(temp))]);
-final_mask = actMap_Mask .* mask3;
-A = real2rgb(final_mask, 'gray');
-%A = real2rgb(mask3, 'gray');
-I = J .* A + G .* (1-A);
-image(I)
-hold on
+        % identify channels that have been zero-ed out due to noise
+        mask = max(dataCroppedInTime,[],3) > 0;
 
-c = colorbar;
-clim([min(actMap1(:)), max(actMap1(:))]);
-colormap(jet);
-c.Label.String = 'Activation Time (ms)';
+        % Find First Derivative and time of maxium
+        derivatives = diff(dataCroppedInTime,1,3); % first derivative
+        [~,max_i] = max(derivatives,[],3); % find location of max derivative
 
-q = quiver(X_plot_downsampled_vector1(1:quiver_step:end),...
-           Y_plot_downsampled_vector1(1:quiver_step:end),Vx_downsampled_vector1(1:quiver_step:end),...
-           -1.0 * Vy_downsampled_vector1(1:quiver_step:end),'k');
-q.LineWidth = 1;
-q.LineWidth = 1;
-q.AutoScaleFactor = 2;
+        % Create Activation Map
+        actMap1 = max_i.*mask;
+        actMap1(actMap1 == 0) = nan;
+        offset1 = min(min(actMap1));
+        actMap1 = actMap1 - offset1*ones(size(data,1),size(data,2));
+        actMap1 = actMap1/Fs*1000; %% time in ms
 
-% second figure 
-cv = figure('Name','Conduction Velocity Map');
-%Create Mask
-actMap_Mask = zeros(size(bg)); %zeros matrix the size of your og image
-actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1; % make it 1 in your selected region
-cvMap_Mask = zeros(size(bg)); % zeros matrix the size of your og image
-%V(V > 2.0) = NaN;
-V=reshape(V,size(cropped,1),size(cropped,2));
-cvMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V; % plug in the velocity matrix in the selected coordinates
-%cvMap_Mask(mask3) = V;
-%Build the Image
-%cvMap_Mask(cvMap_Mask > 0.7) = NaN;
-G = real2rgb(bg, 'gray'); % background image
-J = real2rgb(cvMap_Mask, flipud(jet),[min(min(V)) max(max(V))]);
-final_mask = actMap_Mask .* mask3;
-A = real2rgb(final_mask, 'gray');
-%A = real2rgb(actMap_Mask, 'gray');
-I = J .* A + G .* (1-A);
-%subplot(121)
+    end
 
 
 
-
-image(I)
-c = colorbar;
-colormap(flipud(jet));
-new_mask = mask3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
-new_vel = new_mask .* V;
-new_vel = new_mask .* V;
-new_vel(new_vel == 0) = NaN;
-new_vel(new_vel > 1.0) = NaN;
-clim([min(min(new_vel)), max(max(new_vel))]);
-c.Label.String = 'Conduction Velocity Magnitude (m/s)';
-axis off
-axis image
-
-figure %last figure
-%subplot(122)
-% outside the mask, it should not have a value
-new_mask = mask3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
-new_vel = new_mask .* V;
-new_vel(new_vel < 0.05) = NaN;
-new_vel(new_vel > 3.0) = NaN;
-
-
-% Set NaN color to white
-nan_color = [1, 1, 1]; % RGB values for white
-
-% Create a colormap with NaN color
-custom_colormap = colormap(flipud(jet)); % or any other colormap you prefer
-custom_colormap(1, :) = nan_color; % Set the first row of the colormap to NaN color
-colormap(custom_colormap);
-
-% Plot the image with NaN values
-imagesc(new_vel);
-
-c = colorbar;
-c.Label.String = 'Conduction Velocity Magnitude (m/s)';
-
-axis image
-axis off
-title('Conduction Velocity Magnitude')
-
-b=6;
+% %% Code
+%
+% %% Find Activation Times for Polynomial Surface
+% stat=round(stat*Fs)+1;
+% endp=round(endp*Fs)+1;
+% actMap = zeros(size(data,1),size(data,2));
+% dataCroppedInTime = data(:,:,stat:endp); % truncate data
+%
+% % Re-normalize data in case of drift
+% dataCroppedInTime = normalize_data(dataCroppedInTime);
+%
+% % identify channels that have been zero-ed out due to noise
+% mask = max(dataCroppedInTime,[],3) > 0;
+%
+% % Find First Derivative and time of maxium
+% derivatives = diff(dataCroppedInTime,1,3); % first derivative
+% [~,max_i] = max(derivatives,[],3); % find location of max derivative
+%
+% % Create Activation Map
+% actMap1 = max_i.*mask;
+% actMap1(actMap1 == 0) = nan;
+% offset1 = min(min(actMap1));
+% actMap1 = actMap1 - offset1*ones(size(data,1),size(data,2));
+% actMap1 = actMap1/Fs*1000; %% time in ms
+%
+% %% Find Conduction Velocity Map - Bayly Method
+% % Isolate ROI Specified by RECT
+% rect = round(rect);
+% rect = abs(rect)
+% croppedAmap = actMap1(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)); % get the activation times for the pixels in your rectangle
+% %exclude everything, but activation front
+%
+% use_window=1; % use windowed least-squares fitting
+%
+% if use_window
+%     [xx yy]= meshgrid(rect(1):rect(1)+rect(3),rect(2):rect(2)+rect(4)); % make two matrices. both are the size of your rectangle (ROI)
+%     % in xx each COLUMN is an x coord
+%     % in yy each ROW is a y coord
+%     xx = reshape(xx,[],1); % put it all in a vector. so you have x1 repeated however many y pixels you have,
+%     % x2 repeated however many y pixels you have, etc.
+%     yy = reshape(yy,[],1); % put it all in a vector. so you have y1, y2, y3...yn, repeated however many x pixels you have
+%     % at this point you have two 1 D vectors. if you take the first two
+%     % points, that is your first pixel. the second two points are your
+%     % second pixel etc for all of you ROI
+%     t = reshape(croppedAmap,[],1); % now we take the activation times and put them in a vector too.
+%     %so now if you take the first point in all three, you have all the info
+%     %for one pixel. etc.
+%
+%     xyt = [xx yy t]; % put them all together. each row is the info for one pixel in your rectangle
+%
+%     M=size(xyt,1); % this is the number of pixels in your ROI
+%     XYT=zeros(M,17); % you create a new matrix with the number of rows equal to the pixels you have.
+%     % there are 17 columns because you will find 17 coefficients
+%
+%     space_window_width =  5; %2./ handles.activeCamData.xres; % mm space frame.define neighbors in the spatial space. I am adding just a 5 pixel
+%     time_window_width = 5 * handles.Fs / 1000; % time frame
+%     how_many = 10; % why???
+%     for i=1:M
+%        % ������� ������� ���������� i-��� ����� �� ���� ���������
+%        dx=abs(xyt(:,1)-xyt(i,1));
+%        dy=abs(xyt(:,2)-xyt(i,2));
+%        dt=abs(xyt(:,3)-xyt(i,3));
+%        %find dx dy dt
+%        %------------------------------------------------------------------------
+% % find the location of the pixels that are near to yours. the location is
+% % the row number
+%        near=find((sqrt(dx.^2+dy.^2)<=space_window_width)&(isfinite(xyt(:,3)))&(dt<=time_window_width)); %I added time window which they were ignoring?
+%        % make sure you have enough near points to continue with analysis
+%        len=length(near);
+%        %specify the points by using the points that are close enough
+%        %------------------------------------------------------------------------
+%
+%        if len>how_many
+%             xyn=xyt(near,1:2)-ones(len,1)*xyt(i,1:2); % centered around the i-th point. how far each near pixel is from your pixel
+%             % here they are finding the location based on mm. this does not
+%             % make sense to me, i will implement it in a pixel base
+%             %x=xyn(:,1)*handles.activeCamData.xres/1000;%unit of X,Y are mM
+%             %y=xyn(:,2)*handles.activeCamData.yres/1000;
+%             x = xyn(:,1); %distance in pixels in the x dir
+%             y = xyn(:,2); %distance in pixels in the y dir
+%             t=xyt(near,3); % time of activation
+%             %find dx dy dt of the specific points that are acceptable
+%             %------------------------------------------------------------------------
+%             fit     = [ones(len,1) x y x.^2 y.^2 x.*y x.^3 y.^3 x.*y.^2 y.*x.^2]; % on the windowed area
+%             % we are using the equation T(x,y) = a + bx + cy + dx2 + ex2 +
+%             % fxy + gx3 + hy3 + ixy2 + jyx2
+%             coefs   = fit\t; % find a-j
+%             resi    = sqrt(sum((t-fit*coefs).^2)/sum(t.^2)); % look at residuals, this will help evaluate fit
+%             resilin = sqrt(sum((t-fit(:,1:3)*coefs(1:3)).^2)/sum(t.^2));
+%             XYT(i,:)= [xyt(i,:),coefs',resi,len,cond(fit),resilin]; % per pixel you will have
+%             %[x location, y location, time of act, a, b, c, d, e, f, g, h,
+%             %i, j, residual, how many neighbors, cond(fit), resiling]
+%        end
+%     end
+%
+%     cropped = max(dataCroppedInTime(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3),:), [], 3);
+%     %cropped = dataCroppedInTime(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3),1);
+%     croppedResized = reshape(cropped, [], 1);
+%
+%     was_fitted=find( (XYT(:,1)~=0) & (XYT(:,2)~=0) & (croppedResized(:) > 0)); % if XYT was not filled or point not inside of segmented region
+%     XYT=XYT(was_fitted,:);
+%
+%     % coef_x / (coef_x^2 + coef_y^2) * TODO multiplier????
+%     Vx=(XYT(:,5)./(XYT(:,5).^2 + XYT(:,6).^2))*1000;%handles.activeCamData.xres;
+%     % coef_y / (coef_y^2 + coef_y^2) * TODO multiplier????
+%     Vy=-(XYT(:,6)./(XYT(:,5).^2 + XYT(:,6).^2))*1000;%handles.activeCamData.yres;
+%
+%     V=sqrt(Vx.^2+Vy.^2);
+% end
+%
+% %Calculate Conduction Velocity
+% if ~use_window
+%     Vx = Tx./(Tx.^2+Ty.^2);
+%     Vy = -Ty./(Tx.^2+Ty.^2);
+%     V = sqrt(Vx.^2 + Vy.^2);
+% else
+%     %bad=(V>5); %includeMask CV above 2 m/s
+%     %Vx(bad)=NaN;
+%     %Vy(bad)=NaN;
+%     %V(bad)=NaN;
+% end
+% V = normalize(V,'range');
+% % Display the regional statistics
+% disp('Regional conduction velocity statistics:')
+% meanV=nanmean(V(isfinite(V)));
+% disp(['The mean value is ' num2str(meanV) ' m/s.'])
+% medV = median(V(isfinite(V)));
+% disp(['The median value is ' num2str(medV) ' m/s.'])
+% stdV = std2(V(isfinite(V)));
+% disp(['The standard deviation is ' num2str(stdV) '.'])
+% meanAng = mean(atan2(Vy(isfinite(Vy)),Vx(isfinite(Vy))).*180/pi);
+% disp(['The mean angle is ' num2str(meanAng) ' degrees.'])
+% medAng = median(atan2(Vy(isfinite(Vy)),Vx(isfinite(Vy))).*180/pi);
+% disp(['The median angle is ' num2str(medAng) ' degrees.'])
+% stdAng = std2(atan2(Vy(isfinite(Vy)),Vx(isfinite(Vy))).*180/pi);
+% disp(['The standard deviation of the angle is ' num2str(stdAng) '.'])
+% num_vectors = numel(V(isfinite(V)));
+% disp(['The number of vectors is ' num2str(num_vectors) '.'])
+%
+%         % statistics window
+%        handles.activeCamData.meanresults = sprintf('Mean: %0.3f',meanV);
+%        handles.activeCamData.medianresults  = sprintf('Median: %0.3f',medV);
+%        handles.activeCamData.SDresults = sprintf('S.D.: %0.3f',stdV);
+%        handles.activeCamData.num_membersresults = sprintf('#Members: %d',num_vectors);
+%        handles.activeCamData.angleresults = sprintf('Angle: %d',meanAng);
+%
+%        set(handles.meanresults,'String',handles.activeCamData.meanresults);
+%        set(handles.medianresults,'String',handles.activeCamData.medianresults);
+%        set(handles.SDresults,'String',handles.activeCamData.SDresults);
+%        set(handles.num_members_results,'String',handles.activeCamData.num_membersresults);
+%        set(handles.angleresults,'String',handles.activeCamData.angleresults);
+%
+% handles.activeCamData.saveData = actMap1;
+% % Plot Results
+% cla(movie_scrn);
+% %compute isolines
+%
+% [C,h] = contourf(movie_scrn, actMap1,(endp-stat)/2, 'LineColor','k');
+%
+%
+% %caxis(movie_scrn,[stat endp]);
+% contourcmap('copper','SourceObject', movie_scrn, 'ColorAlignment', 'center');
+% %colorbar(movie_scrn);
+% set(movie_scrn,'YTick',[],'XTick',[]);
+%
+%
+% hold (movie_scrn,'on')
+%
+% %Y_plot = size(data,1)+1 - y(isfinite(Z_fit));
+% if ~use_window
+%     Y_plot = y(isfinite(Z_fit));
+%     X_plot = x(isfinite(Z_fit));
+%     Vx_plot = Vx(isfinite(Z_fit));
+% else
+%     Y_plot = yy(was_fitted);
+%     X_plot = xx(was_fitted);
+%     Vx_plot = Vx;
+% end
+% Vx_plot(abs(Vx_plot) > 5) = 5.*sign(Vx_plot(abs(Vx_plot) > 5));
+% if ~use_window
+%     Vy_plot = Vy(isfinite(Z_fit));
+% else
+%     Vy_plot = Vy;%(was_fitted,1);
+% end
+% Vy_plot(abs(Vy_plot) > 5) = 5.*sign(Vy_plot(abs(Vy_plot) > 5));
+% V = sqrt(Vx_plot.^2 + Vy_plot.^2);
 % 
-% title('Activation Map with Velocity Vectors')
+% %Create Vector Array to pass to following functions
+% VecArray = [X_plot Y_plot Vx_plot Vy_plot V];
+% handles.activeCamData.VecArray = VecArray;
+% length_rect = size(croppedAmap,1)
+% width_rect = size(croppedAmap,2)
+% X_plot_rect = reshape(X_plot,[length_rect,width_rect]);
+% Y_plot_rect = reshape(Y_plot,[length_rect,width_rect]);
+% Vx_plot_rect = reshape(Vx_plot,[length_rect,width_rect]);
+% Vy_plot_rect = reshape(Vy_plot,[length_rect,width_rect]);
+% downsample_factor = 6;
+% %Create index vectors for rows and columns
+% row_indices1 = 1:downsample_factor:length_rect;
+% col_indices1 = 1:downsample_factor:width_rect;
+% % get the downsampled matrices and convert them to vectors
+% downsampled_Vx1 = Vx_plot_rect(row_indices1, col_indices1);
+% Vx_downsampled_vector1 = reshape(downsampled_Vx1,[],1);
+% downsampled_Vy1 = Vy_plot_rect(row_indices1, col_indices1);
+% Vy_downsampled_vector1 = reshape(downsampled_Vy1,[],1);
+% downsampled_X_plot = X_plot_rect(row_indices1, col_indices1);
+% X_plot_downsampled_vector1 = reshape(downsampled_X_plot,[],1);
+% downsampled_Y_plot = Y_plot_rect(row_indices1, col_indices1);
+% Y_plot_downsampled_vector1 = reshape(downsampled_Y_plot,[],1);
+% Vx_downsampled_vector1(abs(Vx_downsampled_vector1)>2) = NaN;
+% Vy_downsampled_vector1(abs(Vy_downsampled_vector1)>2) = NaN;
+% 
+% % X_plot1 = X_plot(1:1:length(X_plot));
+% % Y_plot1 = Y_plot(1:1:length(Y_plot));
+% % Vx_plot1 = Vx_plot(1:1:length(Vx_plot));
+% % Vy_plot1 = Vy_plot(1:1:length(Vy_plot));
+% % Vx_plot1(abs(Vx_plot1)>2) = NaN;
+% % Vy_plot1(abs(Vy_plot1)>2) = NaN;
+% 
+% 
+% %data for saving
+% handles.activeCamData.saveX_plot = X_plot_downsampled_vector1;
+% handles.activeCamData.saveY_plot = Y_plot_downsampled_vector1;
+% handles.activeCamData.saveVx_plot = Vx_downsampled_vector1;
+% handles.activeCamData.saveVy_plot = Vy_downsampled_vector1;
+% 
+% % plot vector field
+% quiver_step = 1;
+% q = quiver(movie_scrn, X_plot_downsampled_vector1(1:quiver_step:end),...
+%            Y_plot_downsampled_vector1(1:quiver_step:end),Vx_downsampled_vector1(1:quiver_step:end),...
+%            -1.0 * Vy_downsampled_vector1(1:quiver_step:end),'k');
+% q.LineWidth = 1;
+% q.AutoScaleFactor = 2;
+% set(movie_scrn,'YDir','reverse');
+% 
+% hold (movie_scrn,'off');
+% 
+% %first figure
+% %Plot Map
+% cc = figure('Name','Activation Map with Velocity Vectors');
+% %Create Mask
+% actMap_Mask = zeros(size(bg));
+% % Your mask needs to be called mask3 (can probably change this). Make sure
+% % you are loading the right heart!!
+% %load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-001\mask3.txt')
+% %load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-002\mask3.txt')
+% %load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-003\mask3.txt')
+% load('C:\Users\Sofia\Desktop\Optical Data - Can studies\OM_MATLAB_C23-004\mask3.txt')
+% actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
+% %Build the Image
+% G = real2rgb(bg, 'gray');
+% 
+% %% activation map just for rectangle
+% croppedAmap(croppedAmap == 0) = nan;
+% offset1 = min(min(croppedAmap));
+% croppedAmap = croppedAmap - offset1*ones(size(croppedAmap,1),size(croppedAmap,2));
+% actMap1 = croppedAmap/Fs*1000; %% time in ms
+% new_actMap1 = zeros(256,256);
+% new_actMap1(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = actMap1;
+% 
+% 
+% J = real2rgb(-new_actMap1, 'jet');%,[min(min(temp)) max(max(temp))]);
+% final_mask = actMap_Mask .* mask3;
+% A = real2rgb(final_mask, 'gray');
+% %A = real2rgb(mask3, 'gray');
+% I = J .* A + G .* (1-A);
+% image(I)
+% hold on
+% 
+% c = colorbar;
+% clim([min(actMap1(:)), max(actMap1(:))]);
+% colormap(jet);
+% c.Label.String = 'Activation Time (ms)';
+% 
+% q = quiver(X_plot_downsampled_vector1(1:quiver_step:end),...
+%            Y_plot_downsampled_vector1(1:quiver_step:end),Vx_downsampled_vector1(1:quiver_step:end),...
+%            -1.0 * Vy_downsampled_vector1(1:quiver_step:end),'k');
+% q.LineWidth = 1;
+% q.LineWidth = 1;
+% q.AutoScaleFactor = 2;
+% 
+% % second figure 
+% cv = figure('Name','Conduction Velocity Map');
+% %Create Mask
+% actMap_Mask = zeros(size(bg)); %zeros matrix the size of your og image
+% actMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1; % make it 1 in your selected region
+% cvMap_Mask = zeros(size(bg)); % zeros matrix the size of your og image
+% %V(V > 2.0) = NaN;
+% V=reshape(V,size(cropped,1),size(cropped,2));
+% cvMap_Mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V; % plug in the velocity matrix in the selected coordinates
+% %cvMap_Mask(mask3) = V;
+% %Build the Image
+% %cvMap_Mask(cvMap_Mask > 0.7) = NaN;
+% G = real2rgb(bg, 'gray'); % background image
+% J = real2rgb(cvMap_Mask, flipud(jet),[min(min(V)) max(max(V))]);
+% final_mask = actMap_Mask .* mask3;
+% A = real2rgb(final_mask, 'gray');
+% %A = real2rgb(actMap_Mask, 'gray');
+% I = J .* A + G .* (1-A);
+% %subplot(121)
+% 
+% 
+% 
+% 
+% image(I)
+% c = colorbar;
+% colormap(flipud(jet));
+% new_mask = mask3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
+% new_vel = new_mask .* V;
+% new_vel = new_mask .* V;
+% new_vel(new_vel == 0) = NaN;
+% new_vel(new_vel > 1.0) = NaN;
+% clim([min(min(new_vel)), max(max(new_vel))]);
+% c.Label.String = 'Conduction Velocity Magnitude (m/s)';
+% axis off
+% axis image
+% 
+% figure %last figure
+% %subplot(122)
+% % outside the mask, it should not have a value
+% new_mask = mask3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
+% new_vel = new_mask .* V;
+% new_vel(new_vel < 0.05) = NaN;
+% new_vel(new_vel > 3.0) = NaN;
+% 
+% 
+% % Set NaN color to white
+% nan_color = [1, 1, 1]; % RGB values for white
+% 
+% % Create a colormap with NaN color
+% custom_colormap = colormap(flipud(jet)); % or any other colormap you prefer
+% custom_colormap(1, :) = nan_color; % Set the first row of the colormap to NaN color
+% colormap(custom_colormap);
+% 
+% % Plot the image with NaN values
+% imagesc(new_vel);
+% 
+% c = colorbar;
+% c.Label.String = 'Conduction Velocity Magnitude (m/s)';
+% 
+% axis image
+% axis off
+% title('Conduction Velocity Magnitude')
+% 
+% b=6;
+% % 
+% % title('Activation Map with Velocity Vectors')
 % axis image
 % axis off
 
