@@ -201,14 +201,15 @@ numOfLevels_callback(numOfLevels_edit);
         axis([1 size(handles.activeCamData.cmosData,1) 1 size(handles.activeCamData.cmosData,1)]);
         %axis ij;
         rect = getrect(handles.activeScreen);
-        gg=msgbox('Building Conduction Velocity Map...');
+        %gg=msgbox('Building Conduction Velocity Map...');
+        tic
         cMap(handles.activeCamData.cmosData,handles.c_start,handles.c_end,...
             handles.activeCamData.Fs,handles.activeCamData.bg,rect, f,...
             handles.activeScreen, handles);
         handles.activeCamData.drawMap=1;
         drawFrame(handles.frame ,handles.activeScreenNo, handles);
         redrawWaveScreens(handles);
-        close(gg)
+        %close(gg)
 
 end
 

@@ -3,7 +3,17 @@ function [cMap] = cMap(data,stat,endp,Fs,bg,rect, f, movie_scrn, handles)
 
 %% my try
 
-[actMap1, mask] = activationmap(stat, Fs, endp, data);
+%% If you want to load previously filtered data, use the next lines.
+data = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\data.mat');
+data = load(data);
+data = struct2cell(data);
+data= cell2mat(data);
+disp('Loaded data')
+toc
+tic
+
+% Get mask to get rid of background and activation time map
+[data_avg, mask3] = avg_mask_cleaning_Sofia(Fs, data);
 
 % Conduction Velocity Calculation
 rect = round(rect);
@@ -11,41 +21,56 @@ rect = abs(rect);
 [xx, yy] = meshgrid(rect(1):rect(1)+rect(3), rect(2):rect(2)+rect(4));
 xx = reshape(xx,[],1);
 yy = reshape(yy,[],1);
-croppedAmap = actMap1(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
+croppedAmap = data_avg(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
 t = reshape(croppedAmap,[],1);
 
 xyt = [xx yy t];
 M = size(xyt,1);
-xres = 0.04167;
-yres = 0.04167;
+prompt = "Resolution? ";
+xres = input(prompt);
+yres = xres;
 
-for space = 30
-    for time_wind = 10
+for space = 30 % number of spatial neighbors
+    for time_wind = 10 % number of temporal neighbors
+        % Get all coefficients
         [XYT] = xyt_matrix(M,xyt,space,time_wind,xres,yres);
+        disp('Got coefficients')
+        toc
+        tic
 
-        for max_Vx = 100
+        for max_Vx = 200 % Define max velocity allowed
+            % Calculate velocities
             [Vx, Vy, V] = vel_calc(XYT,max_Vx,max_Vx);
+            disp('Got velocities')
+            toc
+            tic
 
-            for ds_fac = 6
+            for ds_fac = 6 % Define downsampling factor
+                % Downsample velocities for quiver plot
                 [X, Y, U, V] = downsample(croppedAmap,xx,yy,Vx,Vy,ds_fac);
+                disp('Downsampled data')
+                toc
+                tic
 
-                for auto = 2
-
+                for auto = 2 % Autoscale factor
+                    % Create activation map
+                    mask3(isnan(data_avg)) = 0;
                     figure
-
                     G = real2rgb(bg, 'gray');
                     imagesc(G)
                     hold on
-                    imagesc(actMap1, 'AlphaData', mask)
+                    imagesc(data_avg, 'AlphaData', mask3)
                     colormap(flipud(jet));
                     c = colorbar;
 
+                    % Overlay quiver plot
                     hold on
-
-                    q = quiver(X,Y,U,V, auto , 'k')
+                    q = quiver(X,Y,U,V, auto , 'k');
                     title('Activation Map')
                     c.Label.String = 'Activation Time (ms)';
                     axis off
+
+                    disp(['Average velocity: ', num2str(nanmean(V)), ' cm/s'])
 
                 end
             end
@@ -61,12 +86,9 @@ end
 % and y. Due to this, the derivative of the function wrt x is simply
 % the coefficient, same with y. This feels like an oversimplification
 % but rhythm people also do it so I am going to go with it.
-
 % to find Vx, we need to do Tx / (Tx2 + Ty2) where Tx is the derivative
 % wrt x, in this case the 7th coefficient and Ty is the derivative wrt
 % y, in this case the 8th coefficient
-
-
 % length_rect = size(croppedAmap,1);
 % width_rect = size(croppedAmap,2);
 % X_plot_rect = reshape(xx,[length_rect,width_rect]);
@@ -86,7 +108,6 @@ end
 % X_plot_downsampled_vector1 = reshape(downsampled_X_plot,[],1);
 % downsampled_Y_plot = Y_plot_rect(row_indices1, col_indices1);
 % Y_plot_downsampled_vector1 = reshape(downsampled_Y_plot,[],1);
-
 % hold on
 % %q = quiver(xx(1:3:end),yy(1:3:end),Vx(1:3:end),Vy(1:3:end),'k')
 % q = quiver(X_plot_downsampled_vector1, Y_plot_downsampled_vector1, Vx_downsampled_vector1, Vy_downsampled_vector1, 3, 'k')
@@ -164,7 +185,7 @@ end
 
             % find error. not sure why they use this specific error and what a
             % meaningful number would be. we want it to be small.
-
+          
             resi    = sqrt(sum((time-fit*coefs).^2)/sum(time.^2));
 
             % store coords of pixel, time, coefs, and error
@@ -186,6 +207,7 @@ end
         V = sqrt(Vx.^2+Vy.^2);
     end
 
+% Can use this function to create the activation map for just one AP.
     function [actMap1, mask] = activationmap(stat, Fs, endp, data)
 
         stat=round(stat*Fs)+1;
