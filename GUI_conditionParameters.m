@@ -741,6 +741,11 @@ end
             counter = counter + 1;
             waitbar(counter/trackProg,g1,'Normalizing Data');
             handles.activeCamData.cmosData = normalize_data(handles.activeCamData.cmosData);
+            cmosData = handles.activeCamData.cmosData;
+            prompt = "Save data as... ";
+            filename = input(prompt);
+            save(filename, 'cmosData','-v7.3');
+            
             handles.normflag = 1;
             % Sofia Add 
 %             mask1 = zeros(256,256);
