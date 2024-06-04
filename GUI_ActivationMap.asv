@@ -271,15 +271,13 @@ guidata(activationMapGroup, handles);
             msgbox(error,'Incorrect Input','Error');
             return
         else
-            mask3 = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\mask3_new.txt');
-            mask3 = load(mask3);
             figure;
             G = real2rgb(handles.activeCamData.bg, 'gray');
             imagesc(flipud(G))
             hold on
             isDrawIsolines = get(isolinesCheckBox,'Value');
             if isDrawIsolines
-                contourf(flipud(handles.activeCamData.saveData.*mask3),18,'LineColor','k');
+                contourf(flipud(handles.activeCamData.saveData),18,'LineColor','k');
             else
                 contourf(flipud(handles.activeCamData.saveData),handles.numOfContourLevels-1,'LineColor','none');
             end

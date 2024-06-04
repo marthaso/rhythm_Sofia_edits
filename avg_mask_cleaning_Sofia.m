@@ -4,7 +4,7 @@
 function [data_avg, mask3] = avg_mask_cleaning_Sofia(Fs, data)
 
 %% Get a mask to get rid of background. Can upload one or clean one using the maskfix function.
-mask3 = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\mask3.txt');
+mask3 = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\mask3_new.txt');
 mask3 = load(mask3);
 %mask3 = maskfix;
 disp('Finished Mask')
@@ -60,7 +60,7 @@ final_peaks=[];
 
 
 % make sure peaks are within our time frame:
-for i = 1:length(final_peaks1)
+for i = 6:length(final_peaks1)
     if final_peaks1(i)>=50 && final_peaks1(i)<= 4950
         final_peaks=[final_peaks,final_peaks1(i)];
     end
@@ -78,8 +78,8 @@ toc
 tic
 %% Compute start and end points for all the APs. Here we are using a rise of 60 ms
 
-stat = final_peaks - 50;
-endp = final_peaks + 50;
+stat = final_peaks - 30;
+endp = final_peaks + 30;
 amap = {};
 
 %% Create an activation map for each AP
@@ -112,6 +112,7 @@ data_avg = data_avg - offset;
 % disp('Made average act map')
 toc
 tic
+handles.activeCamData.saveData=data_avg;
 end
 
 function [actMap1, mask] = activationmap(stat, Fs, endp, data)

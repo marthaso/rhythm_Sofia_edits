@@ -1,7 +1,7 @@
 function [actMap1] = aMap(data,...
                             stat,endp,...
                             rect,... % rectangle of ROI coords
-                            Fs,cmap,...
+                            Fs,bg,cmap,...
                             movie_scrn, handles)
 %% aMap is the central function for creating conduction velocity maps
 % [actMap1] = aMap(data,stat,endp,Fs,bg) calculates the activation map
@@ -127,6 +127,11 @@ if size(data,3) ~= 1
 
     set(gca,'xtick',[])
     
+    G = real2rgb(bg, 'gray');
+    imagesc(G)
+    hold on
+
+
     f = figure('visible', 'off');
     colormap(cmap);
     contourf(actMap1,handles.numOfContourLevels-1,'LineColor','none');

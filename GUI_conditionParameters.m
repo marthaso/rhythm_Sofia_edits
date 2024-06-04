@@ -741,6 +741,9 @@ end
             counter = counter + 1;
             waitbar(counter/trackProg,g1,'Normalizing Data');
             handles.activeCamData.cmosData = normalize_data(handles.activeCamData.cmosData);
+            % Added these lines to save data after applying filters,
+            % binning, background, normalization. Makes it fast for next
+            % time. Comment out as needed.
             cmosData = handles.activeCamData.cmosData;
             prompt = "Save data as... ";
             filename = input(prompt);
