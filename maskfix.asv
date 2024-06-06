@@ -58,10 +58,8 @@ while(1)
     if choice==2 || choice==0
         prompt = "Save data as... "; % Save option will come up in the command window.
         % IMPORTANT NOTE: make sure you type 'filename.txt' with whatever
-        % filename you want so you recognize your mask. The quotation marks
-        % and the .txt are imperative for it to work correctly. 
+        % filename you want to 
         filename = input(prompt);
-        % Your new .txt file will be saved in your working directory. 
         save(filename, 'mask3','-ascii', '-tabs');
         break;
     end
