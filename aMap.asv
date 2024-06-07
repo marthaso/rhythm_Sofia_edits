@@ -8,13 +8,10 @@
 % stat: start time of AP rise
 % endp: end time of AP rise
 % rect: rectangle selected by user if a regional map is desired
-% Fs: sampling frequency
-% bg: background image of the FOV
-% we don't use the other inputs with the new code. might erase them later.
+% FS
 
 % Outputs: A matrix the size of your FOV with values starting at 1 showing
-% when each pixel depolarizaes wrt the first one. A figure will be created
-% plotting this, the user can save it if wanted.
+% when each pixel depolarizaes wrt the first one.
 
 function [aMap1] = aMap(data,stat,endp,rect,Fs,bg,cmap,movie_scrn, handles) 
 
@@ -29,11 +26,11 @@ data = data.*mask3;
 %% Get the aMap depending on what the user wants
 choice = menu('Average act map or 1 AP map?','Average','One');
 if choice==1 
-    [aMap1] = averaged_amap(data,Fs); % get an aMap that is an average of multiple APs
+    [aMap1] = averaged_amap(data,Fs);
 else 
-    stat=round(stat*Fs); % we need to change the timepoint to number of sample by multiplying it by sampling frequency
+    stat=round(stat*Fs);
     endp=round(endp*Fs);
-    [aMap1] = activationmap(stat, Fs, endp, data); % get an aMap of only one beat   
+    [aMap1] = activationmap(stat, Fs, endp, data);   
 end
 
 %% If they selected a specific area, only display that area
@@ -49,18 +46,13 @@ aMap1 = aMap1 - offset1*ones(size(aMap1,1),size(aMap1,2));
 
 %% Plot it
 figure;
-% First plot the gray background
 G = real2rgb(bg, 'gray');
 imagesc(G)
 hold on
-% Ask the user if they want isolines or not
 isolines = menu('Draw Isolines?','Yes','No');
 if isolines == 1
-    % Right now, isolines is set to maximum act. time divided by 2 (1 line every 2 ms). Can
-    % change this number if you want more or less lines. 
     contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
 else
-    % no isolines.
     contourf(aMap1,max(max(aMap1)),'LineColor','none');
 end
 colormap (flipud(jet));

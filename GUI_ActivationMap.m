@@ -237,12 +237,16 @@ guidata(activationMapGroup, handles);
         Rect = getrect(handles.activeScreen);
         rect=round(abs(Rect));
         axes(handles.activeCamData.screen)
-        gg=msgbox('Building  Activation Map...');
-        aMap(handles.activeCamData.cmosData,...
+        %gg=msgbox('Building  Activation Map...');
+        data = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\data.mat');
+        data = load(data);
+        data = struct2cell(data);
+        data= cell2mat(data);
+        aMap(data,...
              handles.a_start,handles.a_end,rect,...
              handles.activeCamData.Fs, handles.activeCamData.bg, handles.activeCamData.cmap, handles.activeCamData.screen, handles);
         handles.activeCamData.drawMap = 1;
-        close(gg)
+        %close(gg)
     end
 
     function createamap_global_button_callback(~,~)
@@ -256,12 +260,16 @@ guidata(activationMapGroup, handles);
         M = size(handles.activeCamData.cmosData, 2);
         rect = [1 1 M-1 N-1];
         axes(handles.activeCamData.screen)
-        gg=msgbox('Building  Activation Map...');
-        aMap(handles.activeCamData.cmosData,...
+        %gg=msgbox('Building  Activation Map...');
+        data = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\data.mat');
+        data = load(data);
+        data = struct2cell(data);
+        data= cell2mat(data);
+        aMap(data,...
              handles.a_start,handles.a_end,rect,...
              handles.activeCamData.Fs,handles.activeCamData.bg,handles.activeCamData.cmap, handles.activeCamData.screen, handles);
         handles.activeCamData.drawMap = 1;
-        close(gg)
+        %close(gg)
     end
 
 %% Export picture from the screen
