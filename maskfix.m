@@ -9,7 +9,7 @@
 % Outputs: You will save a new .txt file with your new mask.
 
 
-function [mask3] = maskfix
+function [mask3] = maskfix(aMap)
 
 % First load the existing mask file. Make sure it is located in your
 % working directory or it won't work.
@@ -22,7 +22,7 @@ while(1)
     % Plot the existing mask so you can see it. Yellow = 1 = kept pixels.
     % Blue = 0 = background.
     figure
-    imagesc(mask3)
+    imagesc(aMap)
 
     % Draw which pixels you want to set as background. You can click the
     % magnifying glass at the top if you want to zoom into a specific
@@ -37,7 +37,8 @@ while(1)
     % the og mask
     new_mask = mask3-newmask; % subtract new mask from og. If pixel was 1 in both, now it is 0 (bg)
     new_mask(new_mask==-1)=0; % if a pixel was originally bg and got subtracted, you set it back to 0 (bg).
-    imagesc(new_mask) % visualize your new mask.
+    %imagesc(new_mask) % visualize your new mask.
+    imagesc(aMap)
 
     % Now draw pixels you want to add as foreground.
     add = drawfreehand;

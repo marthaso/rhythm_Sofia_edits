@@ -9,7 +9,7 @@
 % Outputs: You will save a new .txt file with your new mask.
 
 
-function [mask3] = maskfix
+function [mask3] = maskfix(aMap)
 
 % First load the existing mask file. Make sure it is located in your
 % working directory or it won't work.
@@ -58,8 +58,10 @@ while(1)
     if choice==2 || choice==0
         prompt = "Save data as... "; % Save option will come up in the command window.
         % IMPORTANT NOTE: make sure you type 'filename.txt' with whatever
-        % filename you want to 
+        % filename you want so you recognize your mask. The quotation marks
+        % and the .txt are imperative for it to work correctly. 
         filename = input(prompt);
+        % Your new .txt file will be saved in your working directory. 
         save(filename, 'mask3','-ascii', '-tabs');
         break;
     end

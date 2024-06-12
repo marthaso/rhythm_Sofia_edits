@@ -237,12 +237,16 @@ guidata(activationMapGroup, handles);
         Rect = getrect(handles.activeScreen);
         rect=round(abs(Rect));
         axes(handles.activeCamData.screen)
-        gg=msgbox('Building  Activation Map...');
-        aMap(handles.activeCamData.cmosData,...
-             handles.a_start,handles.a_end,rect,...
-             handles.activeCamData.Fs, handles.activeCamData.bg, handles.activeCamData.cmap, handles.activeCamData.screen, handles);
-        handles.activeCamData.drawMap = 1;
-        close(gg)
+        %gg=msgbox('Building  Activation Map...');
+        data = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\data.mat');
+        data = load(data);
+        data = struct2cell(data);
+        data= cell2mat(data);       
+            aMap(data,...
+                handles.a_start,handles.a_end,rect,...
+                handles.activeCamData.Fs,handles.activeCamData.bg,handles.activeCamData.cmap, handles.activeCamData.screen, handles);
+              handles.activeCamData.drawMap = 1;
+        %close(gg)
     end
 
     function createamap_global_button_callback(~,~)
@@ -256,12 +260,16 @@ guidata(activationMapGroup, handles);
         M = size(handles.activeCamData.cmosData, 2);
         rect = [1 1 M-1 N-1];
         axes(handles.activeCamData.screen)
-        gg=msgbox('Building  Activation Map...');
-        aMap(handles.activeCamData.cmosData,...
-             handles.a_start,handles.a_end,rect,...
-             handles.activeCamData.Fs,handles.activeCamData.bg,handles.activeCamData.cmap, handles.activeCamData.screen, handles);
+        %gg=msgbox('Building  Activation Map...');
+        data = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\data.mat');
+        data = load(data);
+        data = struct2cell(data);
+        data= cell2mat(data);
+        aMap(data,...
+            handles.a_start,handles.a_end,rect,...
+            handles.activeCamData.Fs,handles.activeCamData.bg,handles.activeCamData.cmap, handles.activeCamData.screen, handles);
         handles.activeCamData.drawMap = 1;
-        close(gg)
+        %close(gg)
     end
 
 %% Export picture from the screen
@@ -271,13 +279,15 @@ guidata(activationMapGroup, handles);
             msgbox(error,'Incorrect Input','Error');
             return
         else
+            mask3 = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\mask3_new.txt');
+            mask3 = load(mask3);
             figure;
             G = real2rgb(handles.activeCamData.bg, 'gray');
             imagesc(flipud(G))
             hold on
             isDrawIsolines = get(isolinesCheckBox,'Value');
             if isDrawIsolines
-                contourf(flipud(handles.activeCamData.saveData),18,'LineColor','k');
+                contourf(flipud(handles.activeCamData.saveData.*mask3),18,'LineColor','k');
             else
                 contourf(flipud(handles.activeCamData.saveData),handles.numOfContourLevels-1,'LineColor','none');
             end

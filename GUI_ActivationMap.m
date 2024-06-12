@@ -243,8 +243,8 @@ guidata(activationMapGroup, handles);
         data = struct2cell(data);
         data= cell2mat(data);
         aMap(data,...
-             handles.a_start,handles.a_end,rect,...
-             handles.activeCamData.Fs, handles.activeCamData.bg, handles.activeCamData.cmap, handles.activeCamData.screen, handles);
+            handles.a_start,handles.a_end,rect,...
+            handles.activeCamData.Fs,handles.activeCamData.bg,handles.activeCamData.cmap, handles.activeCamData.screen, handles);
         handles.activeCamData.drawMap = 1;
         %close(gg)
     end
@@ -266,8 +266,8 @@ guidata(activationMapGroup, handles);
         data = struct2cell(data);
         data= cell2mat(data);
         aMap(data,...
-             handles.a_start,handles.a_end,rect,...
-             handles.activeCamData.Fs,handles.activeCamData.bg,handles.activeCamData.cmap, handles.activeCamData.screen, handles);
+            handles.a_start,handles.a_end,rect,...
+            handles.activeCamData.Fs,handles.activeCamData.bg,handles.activeCamData.cmap, handles.activeCamData.screen, handles);
         handles.activeCamData.drawMap = 1;
         %close(gg)
     end

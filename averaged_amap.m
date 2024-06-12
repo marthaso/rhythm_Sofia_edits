@@ -26,7 +26,7 @@ for i = 1:10:size(data,1)
         derivatives = diff(pixel);
         % If it's outisde the mask, the derivatives will be zero.
         if mean(derivatives) ~= 0 % if it is not background...
-            [pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.01,'MinPeakDistance',200); % find all peaks. prominence and distance
+            [pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.05,'MinPeakDistance',200); % find all peaks. prominence and distance
             % can and might be changed if peaks are not identified
             % correctly
             count = count + 1;
@@ -64,7 +64,7 @@ final_peaks=[];
 %% make sure peaks are within our time frame. We will add/subtract a few ms to 
 % encompass all pixels. Here we are using 30 ms both ways.
 for i = 1:length(final_peaks1)
-    if final_peaks1(i)>30 && final_peaks1(i)< 4970
+    if final_peaks1(i)>60 && final_peaks1(i)< 4900
         final_peaks=[final_peaks,final_peaks1(i)];
     end
 end
@@ -75,6 +75,12 @@ figure
 plot(squeeze(data(100,100,:)))
 hold on
 plot(final_peaks,ones(length(final_peaks),1)*(mean(data(100,100,:))+std(data(100,100,:))),'o')
+
+% figure
+% plot(squeeze(data(50,50,:)))
+% hold on
+% plot(final_peaks,ones(length(final_peaks),1)*(mean(data(50,50,:))+std(data(50,50,:))),'o')
+
 
 %% Select any peaks you want to exclude from analysis.
 [xi,yi] = getpts; % on the figure, click near the peaks you want to exclude. Click enter when done.
@@ -111,8 +117,8 @@ end
 % plot(final_peaks_chosen,ones(length(final_peaks_chosen),1)*(mean(data(100,100,:))+std(data(100,100,:))),'o')
 
 %% Compute start and end points for all the APs. Here we are using a rise of 60 ms
-stat = final_peaks_chosen - 30;
-endp = final_peaks_chosen + 30;
+stat = final_peaks_chosen - 60;
+endp = final_peaks_chosen + 100;
 % Create a  cell to store all the aMaps 
 amap = {};
 

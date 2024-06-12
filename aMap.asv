@@ -8,17 +8,20 @@
 % stat: start time of AP rise
 % endp: end time of AP rise
 % rect: rectangle selected by user if a regional map is desired
-% FS
+% Fs: sampling frequency
+% bg: background image of the FOV
+% we don't use the other inputs with the new code. might erase them later.
 
 % Outputs: A matrix the size of your FOV with values starting at 1 showing
-% when each pixel depolarizaes wrt the first one.
+% when each pixel depolarizaes wrt the first one. A figure will be created
+% plotting this, the user can save it if wanted.
 
 function [aMap1] = aMap(data,stat,endp,rect,Fs,bg,cmap,movie_scrn, handles) 
 
 %% Get a mask to get rid of background. Can upload one or clean one using the maskfix function.
 mask3 = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\mask3_new.txt');
 mask3 = load(mask3);
-%mask3 = maskfix;
+% mask3 = maskfix;
 
 %% Multiply your data by the mask to get rid of background.
 data = data.*mask3;
@@ -26,11 +29,11 @@ data = data.*mask3;
 %% Get the aMap depending on what the user wants
 choice = menu('Average act map or 1 AP map?','Average','One');
 if choice==1 
-    [aMap1] = averaged_amap(data,Fs);
+    [aMap1] = averaged_amap(data,Fs); % get an aMap that is an average of multiple APs
 else 
-    stat=round(stat*Fs);
+    stat=round(stat*Fs); % we need to change the timepoint to number of sample by multiplying it by sampling frequency
     endp=round(endp*Fs);
-    [aMap1] = activationmap(stat, Fs, endp, data);   
+    [aMap1] = activationmap(stat, Fs, endp, data); % get an aMap of only one beat   
 end
 
 %% If they selected a specific area, only display that area
@@ -46,13 +49,18 @@ aMap1 = aMap1 - offset1*ones(size(aMap1,1),size(aMap1,2));
 
 %% Plot it
 figure;
+% First plot the gray background
 G = real2rgb(bg, 'gray');
 imagesc(G)
 hold on
+% Ask the user if they want isolines or not
 isolines = menu('Draw Isolines?','Yes','No');
 if isolines == 1
+    % Right now, isolines is set to maximum act. time divided by 2 (1 line every 2 ms). Can
+    % change this number if you want more or less lines. 
     contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
 else
+    % no isolines.
     contourf(aMap1,max(max(aMap1)),'LineColor','none');
 end
 colormap (flipud(jet));
@@ -60,6 +68,15 @@ c=colorbar;
 axis off
 title('Activation Map')
 c.Label.String = 'Activation Time (ms)';
+
+% Don't ask user, just do two figures
+contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
+colormap (flipud(jet));
+c=colorbar;
+axis off
+title('Activation Map')
+c.Label.String = 'Activation Time (ms)';
+
 
 
 %%%%% PREVIOUS CODE %%%%%

@@ -16,12 +16,11 @@
 % when each pixel depolarizaes wrt the first one. A figure will be created
 % plotting this, the user can save it if wanted.
 
-function [aMap1] = aMap(data,stat,endp,rect,Fs,bg,cmap,movie_scrn, handles) 
+function [aMap1,mask3] = aMap(data,stat,endp,rect,Fs,bg,cmap,movie_scrn, handles) 
 
 %% Get a mask to get rid of background. Can upload one or clean one using the maskfix function.
 mask3 = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\mask3_new.txt');
 mask3 = load(mask3);
-%mask3 = maskfix;
 
 %% Multiply your data by the mask to get rid of background.
 data = data.*mask3;
@@ -35,6 +34,8 @@ else
     endp=round(endp*Fs);
     [aMap1] = activationmap(stat, Fs, endp, data); % get an aMap of only one beat   
 end
+
+% mask3 = maskfix(aMap1);
 
 %% If they selected a specific area, only display that area
 % Make a mask of 1s in the selected rectangle. 0 everywhere else.
@@ -53,21 +54,41 @@ figure;
 G = real2rgb(bg, 'gray');
 imagesc(G)
 hold on
-% Ask the user if they want isolines or not
-isolines = menu('Draw Isolines?','Yes','No');
-if isolines == 1
-    % Right now, isolines is set to maximum act. time divided by 2 (1 line every 2 ms). Can
-    % change this number if you want more or less lines. 
-    contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
-else
-    % no isolines.
-    contourf(aMap1,max(max(aMap1)),'LineColor','none');
-end
+% % Ask the user if they want isolines or not
+% isolines = menu('Draw Isolines?','Yes','No');
+% if isolines == 1
+%     % Right now, isolines is set to maximum act. time divided by 2 (1 line every 2 ms). Can
+%     % change this number if you want more or less lines. 
+%     contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
+% else
+%     % no isolines.
+%     contourf(aMap1,max(max(aMap1)),'LineColor','none');
+% end
+% colormap (flipud(jet));
+% c=colorbar;
+% axis off
+% title('Activation Map')
+% c.Label.String = 'Activation Time (ms)';
+
+% Don't ask user, just do two figures
+contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
 colormap (flipud(jet));
 c=colorbar;
 axis off
 title('Activation Map')
 c.Label.String = 'Activation Time (ms)';
+
+figure;
+G = real2rgb(bg, 'gray');
+imagesc(G)
+hold on
+contourf(aMap1,max(max(aMap1)),'LineColor','none');
+colormap (flipud(jet));
+c=colorbar;
+axis off
+title('Activation Map')
+c.Label.String = 'Activation Time (ms)';
+
 
 
 %%%%% PREVIOUS CODE %%%%%
