@@ -743,7 +743,8 @@ end
             handles.activeCamData.cmosData = normalize_data(handles.activeCamData.cmosData);
             % Added these lines to save data after applying filters,
             % binning, background, normalization. Makes it fast for next
-            % time. Comment out as needed.
+            % time. Comment out as needed. Make sure to use quotation marks
+            % for the prompt so it works correctly.
             cmosData = handles.activeCamData.cmosData;
             prompt = "Save data as... ";
             filename = input(prompt);
