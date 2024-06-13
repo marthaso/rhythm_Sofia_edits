@@ -368,16 +368,6 @@ end
         end
     end
 
-% Function name: vel_calc_third
-% Function Summary: Same as function below just using the third degree
-% polynomial (eerything is the same but the coefficient number you use is
-% different which is why this is separate function).
-% Inputs: XYT - matrix with pixels info including coefficients for the
-% surface at each pixel. max values of velocities in our range (user
-% defined). 
-% Outputs: Vx - line vector of x velocities for each pixel in your ROI. Vy
-% - line vector of y velocities for each pixel in your ROI. V - line
-% vector of total velocity magnitude for each pixel in your ROI.
     function [Vx, Vy, V] = vel_calc_third(XYT,max_Vx,max_Vy)
 
         Vx=(XYT(:,9)./(XYT(:,8).^2 + XYT(:,9).^2))*100; % times 100 to go from mm/msec to cm/sec
@@ -398,17 +388,10 @@ end
 % surface at each pixel. max values of velocities in our range (user
 % defined). 
 % Outputs: Vx - line vector of x velocities for each pixel in your ROI. Vy
-% - line vector of y velocities for each pixel in your ROI. V - line
-% vector of total velocity magnitude for each pixel in your ROI.
+% - line vector of y velocities for each pixel in y
 
     function [Vx, Vy, V] = vel_calc(XYT,max_Vx,max_Vy)
 
-        % NEED TO LOOK MORE INTO THIS. When you compute coefficients, only
-        % two of them differ from zero so your derivative wrt x is just the
-        % 7th coefficient. the derivative wrt y is just the 8th
-        % coefficient. % to find Vx, we need to do Tx / (Tx2 + Ty2) where
-        % Tx is the derivative wrt x, Ty is the derivative wrt y.; Same for
-        % Vy
         Vx = (XYT(:,7)./(XYT(:,7).^2 + XYT(:,8).^2))*100; % times 100 to go from mm/msec to cm/sec
         Vy = (XYT(:,8)./(XYT(:,7).^2 + XYT(:,8).^2))*100;
         Vx(abs(Vx) > max_Vx) = NaN;
@@ -417,7 +400,6 @@ end
         % standard_dev_y = std(Vy);
         % Vx(abs(Vx) > standard_dev*2) = NaN;
         % Vy(abs(Vy) > standard_dev_y*2) = NaN;
-        % Get velocity magnitude
         V = sqrt(Vx.^2+Vy.^2);
     end
 
