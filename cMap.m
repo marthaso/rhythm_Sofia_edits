@@ -20,7 +20,7 @@ disp('Loaded data') % Display messages throughout just to know where we are.
 
 % Get mask to get rid of background and activation time map
 [data_avg, mask3] = aMap(data,stat,endp,rect,Fs,bg);
- 
+
 %% Conduction Velocity Calculation
 % Get the coords of your selection
 rect = round(rect);
@@ -35,10 +35,43 @@ xx = reshape(xx,[],1);
 yy = reshape(yy,[],1);
 % From your activation time map, just get the values in you selected region
 croppedAmap = data_avg(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3));
+
+%[vels] = manual_cal_2(croppedAmap);
+
+
+% %[Vx, Vy, V] = manual_calc(croppedAmap);
+% % Make a matrix of zeros the size of your FOV
+% maskvel2 = zeros(size(bg));
+% % Place your velocity matrix in the right position
+% % (ROI)
+% maskvel2(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = V;
+% % Turn any nan values into 0
+% maskvel2(isnan(V))=0;
+
+
+% % Plot velocity values on top of the gray background
+% figure
+% G = real2rgb(bg, 'gray');
+% imagesc(G)
+% hold on
+% imagesc(V, 'AlphaData', V)
+% colormap(flipud(jet));
+% c = colorbar;
+% %title(['Velocity Magnitude ', num2str(space), ' Second Degree'])
+% c.Label.String = 'Velocity Magnitude (cm/s)';
+% axis off
+% 
+% figure
+% histogram(V)
+
+
+
+%%
+
 % Set all the times in a line vector
 t = reshape(croppedAmap,[],1);
- % put them all together. each row is the info for one pixel in your
- % rectangle (x coord, y coord, and act time)
+% put them all together. each row is the info for one pixel in your
+% rectangle (x coord, y coord, and act time)
 xyt = [xx yy t];
 % M is how many pixels you have in your ROI
 M = size(xyt,1);
@@ -48,54 +81,87 @@ xres = input(prompt);
 % Usually work with square pixels. Can change this if needed.
 yres = xres;
 
-for space = 30:30:60 % number of spatial neighbors. Change as needed
-    for time_wind = 10:10:20 % number of temporal neighbors. Change as needed
+second = [];
+third = [];
+spp = 0;
+timm = 0;
+for space = 30 % number of spatial neighbors. Change as needed (30)
+    % spp = spp + 1;
+    % space
+    % timm = 0;
+    for time_wind = 20 % number of temporal neighbors. Change as needed (10)
+        % timm = timm + 1;
+        % time_wind
         % Get all coefficients
-        [XYT] = xyt_matrix(M,xyt,space,time_wind,xres,yres);
-        disp('Got coefficients')
-    
-        % Get all coefficients for third degree
-        [XYT3] = xyt_matrix_third(M,xyt,space,time_wind,xres,yres);
+        max_Vx = 500;
+        [Vx, Vy, Velval] = xyt_matrix(M,xyt,space,time_wind,xres,yres, max_Vx,max_Vx);
+        % disp('Second Error')
+        % disp(nanmean(XYT(:,10)))
+        % disp(nanmean(XYT(:,13)))
+        % disp(nanmean(XYT(:,12)))
 
-        for max_Vx = 500 % Define max velocity allowed. Change as needed.
-            % Calculate velocities
-            [Vx, Vy, Velval] = vel_calc(XYT,max_Vx,max_Vx);
-            [Vx3, Vy3, Velval3] = vel_calc_third(XYT3,max_Vx,max_Vx);
-            disp('Got velocities')
-            
+        % Get all coefficients for third degree
+        % [XYT3] = xyt_matrix_third(M,xyt,space,time_wind,xres,yres);
+        % disp('Third Error')
+        % disp(nanmean(XYT3(:,14)))
+        % disp(nanmean(XYT3(:,15)))
+
+        % for max_Vx = 500 % Define max velocity allowed. Change as needed.
+        %     %Calculate velocities
+        %     % newXYT = [];
+        %     % 
+        %     % for i = 1:size(XYT,1)
+        %     %     if XYT(i,10)<0.5 && XYT(i,13)<0.95 && XYT(i,12)<1000
+        %     %         newXYT = [newXYT;XYT(i,:)];
+        %     %     else
+        %     %         newXYT = [newXYT;zeros(1,14)];
+        %     % 
+        %     %     end
+        %     % 
+        %     % end
+        % 
+        % 
+        %     % [Vx3, Vy3, Velval3] = vel_calc(newXYT,max_Vx,max_Vx);
+        %     [Vx, Vy, Velval] = vel_calc(XYT,max_Vx,max_Vx);
+        %     %     second(spp,timm) = nanmean(Velval);
+            %         [Vx3, Vy3, Velval3] = vel_calc_third(XYT3,max_Vx,max_Vx);
+            %         third(spp,timm) = nanmean(Velval3);
+            %         %disp('Got velocities')
+            %     %
             for ds_fac = 6 % Define downsampling factor. 6 seems to work well.
                 % Downsample velocities for quiver plot
                 [X, Y, U, V] = downsample(croppedAmap,xx,yy,Vx,Vy,ds_fac);
-                [X3, Y3, U3, V3] = downsample(croppedAmap,xx,yy,Vx3,Vy3,ds_fac);
-                disp('Downsampled data')
-                
+                % [X3, Y3, U3, V3] = downsample(croppedAmap,xx,yy,Vx3,Vy3,ds_fac);
+                %disp('Downsampled data')
+
                 for auto = 2 % Autoscale factor. 2 seems to work well.
                     % Create activation map
                     mask3(isnan(data_avg)) = 0; % set any nan values to 0
-                    figure
-                    % First plot the grayscale background
-                    G = real2rgb(bg, 'gray');
-                    imagesc(G)
-                    hold on
-                    % Plot activation map. Any zeroes in mask 3 will be
-                    % transparent so you can see the background.
-                    imagesc(data_avg, 'AlphaData', mask3)
-                    colormap(flipud(jet));
-                    c = colorbar;
+                    % figure
+                    % % First plot the grayscale background
+                    % G = real2rgb(bg, 'gray');
+                    % imagesc(G)
+                    % hold on
+                    % % Plot activation map. Any zeroes in mask 3 will be
+                    % % transparent so you can see the background.
+                    % imagesc(data_avg, 'AlphaData', mask3)
+                    % colormap(flipud(jet));
+                    % c = colorbar;
+                    % 
+                    % % Overlay quiver plot
+                    % hold on
+                    % q = quiver(X,Y,U,V, auto , 'k');
+                    % title(['Activation Map ', num2str(space), ' Second Degree'])
+                    % c.Label.String = 'Activation Time (ms)';
+                    % axis off
+                    % 
+                    % % Average velocity magnitude
+                    % disp(['Average velocity new: ', num2str(nanmean(Velval)), ' cm/s'])
 
-                    % Overlay quiver plot
-                    hold on
-                    q = quiver(X,Y,U,V, auto , 'k');
-                    title(['Activation Map ',space,' ',time_wind])
-                    c.Label.String = 'Activation Time (ms)';
-                    axis off
-
-                    % Average velocity magnitude
-                    disp(['Average velocity: ', num2str(nanmean(Velval)), ' cm/s'])
-                    
                     % Display a histogram of the velocity magnitudes
                     figure
                     histogram(Velval)
+                    title(['Velocity Magnitudes ', num2str(space), ' Second Degree'])
 
                     % The velocities are stored in a line vector.
                     % Reorganize them to be in the size of the ROI
@@ -116,60 +182,78 @@ for space = 30:30:60 % number of spatial neighbors. Change as needed
                     imagesc(maskvel, 'AlphaData', maskvel)
                     colormap(flipud(jet));
                     c = colorbar;
-                    title('Velocity Magnitude')
+                    title(['Velocity Magnitude ', num2str(space), ' Second Degree'])
                     c.Label.String = 'Velocity Magnitude (cm/s)';
                     axis off
 
-                                    
-                    %%% third degree. Same as before but using the third
-                    %%% degree polynomial
-                    
-                    % Create activation map
-                    mask3(isnan(data_avg)) = 0;
-                    figure
-                    G = real2rgb(bg, 'gray');
-                    imagesc(G)
-                    hold on
-                    imagesc(data_avg, 'AlphaData', mask3)
-                    colormap(flipud(jet));
-                    c = colorbar;
+                    maskvel(maskvel==0)=NaN;
+                    average_3 = nanmean(nanmean(maskvel))
 
-                    % Overlay quiver plot
-                    hold on
-                    q = quiver(X3,Y3,U3,V3, auto , 'k');
-                    title('Activation Map ')
-                    c.Label.String = 'Activation Time (ms)';
-                    axis off
 
-                    disp(['Average velocity: ', num2str(nanmean(Velval3)), ' cm/s'])
 
-                    figure
-                    histogram(Velval3)
 
-                    Velval3 = reshape(Velval3,size(croppedAmap,1),size(croppedAmap,2));
-                    maskvel3 = zeros(size(bg));
-                    maskvel3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = Velval3;
-                    maskvel3(isnan(maskvel3))=0;
 
-                    
-                    figure
-                    G = real2rgb(bg, 'gray');
-                    imagesc(G)
-                    hold on
-                    imagesc(maskvel3, 'AlphaData', maskvel3)
-                    colormap(flipud(jet));
-                    c = colorbar;
-                    title(['Velocity Magnitude',space,' ',time_wind])
-                    c.Label.String = 'Velocity Magnitude (cm/s)';
-                    axis off
 
-                    toc
 
-                end
+
+
+
+
+                    % %%% third degree. Same as before but using the third
+                    % %%% degree polynomial
+                    % 
+                    % % Create activation map
+                    % mask3(isnan(data_avg)) = 0;
+                    % figure
+                    % G = real2rgb(bg, 'gray');
+                    % imagesc(G)
+                    % hold on
+                    % imagesc(data_avg, 'AlphaData', mask3)
+                    % colormap(flipud(jet));
+                    % c = colorbar;
+                    % 
+                    % % Overlay quiver plot
+                    % hold on
+                    % q = quiver(X3,Y3,U3,V3, auto , 'k');
+                    % title(['Activation Map'])
+                    % c.Label.String = 'Activation Time (ms)';
+                    % axis off
+                    % 
+                    % disp(['Average velocity OG: ', num2str(nanmean(Velval3)), ' cm/s'])
+                    % 
+                    % figure
+                    % histogram(Velval3)
+                    % title(['Velocity Magnitudes'])
+                    % 
+                    % Velval3 = reshape(Velval3,size(croppedAmap,1),size(croppedAmap,2));
+                    % maskvel3 = zeros(size(bg));
+                    % maskvel3(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = Velval3;
+                    % maskvel3(isnan(maskvel3))=0;
+                    % 
+                    % 
+                    % figure
+                    % G = real2rgb(bg, 'gray');
+                    % imagesc(G)
+                    % hold on
+                    % imagesc(maskvel3, 'AlphaData', maskvel3)
+                    % colormap(flipud(jet));
+                    % c = colorbar;
+                    % title(['Velocity Magnitude'])
+                    % c.Label.String = 'Velocity Magnitude (cm/s)';
+                    % axis off
+                    % 
+                    % toc
+
+                % end
             end
         end
     end
+
 end
+
+disp(second)
+disp(third)
+a=1;
 
 
 % now you have the polynomial for your surface. I noticed that most
@@ -214,33 +298,33 @@ end
 % plot in quiver. Y has the y coords. U has the Vx and V hsa the Vy.
 
 
-    function [X, Y, U, V] = downsample(croppedAmap,xx,yy,Vx,Vy,downsample_factor)
-
-        % How long is your ROI
-        length_rect = size(croppedAmap,1);
-        % How wide is your ROI
-        width_rect = size(croppedAmap,2);
-        % Basically, make four matrices the size of your ROI. So in the
-        % first spot of each matrix, you have info about that first pixel.
-        % You have the pixel's x coord, y coord, Vx and Vy.
-        X_plot_rect = reshape(xx,[length_rect,width_rect]);
-        Y_plot_rect = reshape(yy,[length_rect,width_rect]);
-        Vx_plot_rect = reshape(Vx,[length_rect,width_rect]);
-        Vy_plot_rect = reshape(Vy,[length_rect,width_rect]);
-        %Create index vectors for rows and columns
-        row_indices1 = 1:downsample_factor:length_rect;
-        col_indices1 = 1:downsample_factor:width_rect;
-        % get the downsampled matrices and convert them to vectors
-        downsampled_Vx1 = Vx_plot_rect(row_indices1, col_indices1);
-        U = reshape(downsampled_Vx1,[],1);
-        downsampled_Vy1 = Vy_plot_rect(row_indices1, col_indices1);
-        V = reshape(downsampled_Vy1,[],1);
-        downsampled_X_plot = X_plot_rect(row_indices1, col_indices1);
-        X = reshape(downsampled_X_plot,[],1);
-        downsampled_Y_plot = Y_plot_rect(row_indices1, col_indices1);
-        Y = reshape(downsampled_Y_plot,[],1);
-
-    end
+    % function [X, Y, U, V] = downsample(croppedAmap,xx,yy,Vx,Vy,downsample_factor)
+    % 
+    %     % How long is your ROI
+    %     length_rect = size(croppedAmap,1);
+    %     % How wide is your ROI
+    %     width_rect = size(croppedAmap,2);
+    %     % Basically, make four matrices the size of your ROI. So in the
+    %     % first spot of each matrix, you have info about that first pixel.
+    %     % You have the pixel's x coord, y coord, Vx and Vy.
+    %     X_plot_rect = reshape(xx,[length_rect,width_rect]);
+    %     Y_plot_rect = reshape(yy,[length_rect,width_rect]);
+    %     Vx_plot_rect = reshape(Vx,[length_rect,width_rect]);
+    %     Vy_plot_rect = reshape(Vy,[length_rect,width_rect]);
+    %     %Create index vectors for rows and columns
+    %     row_indices1 = 1:downsample_factor:length_rect;
+    %     col_indices1 = 1:downsample_factor:width_rect;
+    %     % get the downsampled matrices and convert them to vectors
+    %     downsampled_Vx1 = Vx_plot_rect(row_indices1, col_indices1);
+    %     U = reshape(downsampled_Vx1,[],1);
+    %     downsampled_Vy1 = Vy_plot_rect(row_indices1, col_indices1);
+    %     V = reshape(downsampled_Vy1,[],1);
+    %     downsampled_X_plot = X_plot_rect(row_indices1, col_indices1);
+    %     X = reshape(downsampled_X_plot,[],1);
+    %     downsampled_Y_plot = Y_plot_rect(row_indices1, col_indices1);
+    %     Y = reshape(downsampled_Y_plot,[],1);
+    % 
+    % end
 
 % Function name: xyt matrix
 % Function Summary: Will generate coefficients to fit your model.
@@ -249,60 +333,83 @@ end
 % spatial neighbors), time_window_width (which pixels will be temporal
 % neighbors), xres and yres (how much is one pixel spatially).
 % Outputs: XYT matrix which contains (per pixel): x coords, y coords, act
-% time, coefficients, and residual error. 
+% time, coefficients, and residual error.
 
-    function [XYT] = xyt_matrix(M,xyt,space_window_width,time_window_width,xres,yres)
-
-        % This is your final output matrix that you will build up. 
-        XYT = zeros(M,10);
-
-        for num_pix = 1:M %go through each pixel
-
-            % Find how far spatially and temporally each pixel is from the one you
-            % are evaluating
-
-            dx = abs(xyt(:,1)-xyt(num_pix,1));
-            dy=abs(xyt(:,2)-xyt(num_pix,2));
-            dt=abs(xyt(:,3)-xyt(num_pix,3));
-
-            % Find the pixels near your pixel
-
-            near = find ((sqrt(dx.^2 + dy.^2) <= space_window_width) & (isfinite(xyt(:,3))) & (dt <= time_window_width));
-
-            % xyt(near, 1:2) - get the x and y coord of each near pixel
-            % ones(length(near),1) - make a vector of 1s the size of the number of
-            % near pixels
-            % xyt(i, 1:2) - get the x and y coords of your pixel
-            % substract your pixel's location from all the near neighbors. make a
-            % vector which says for each near pixel, how far (x and y) it is from
-            % your pixel
-            xyn = xyt(near, 1:2) - ones(length(near),1) * xyt(num_pix,1:2);
-
-            % convert pixel distance to physical distance. xres and yres are user
-            % inputs
-
-            x = xyn(:,1) * xres;
-            y = xyn(:,2) * yres;
-            time = xyt(near,3);
-
-            % create your A matrix. (look at powerpoint for more info)
-
-            fit = [x.^2  y.^2  x.*y  x  y  ones(length(near),1)];
-
-            % find coefficienta (a-f) such that Aa=t. these are your a-f
-
-            coefs = fit\time;
-
-            % find error. not sure why they use this specific error and what a
-            % meaningful number would be. we want it to be small.
-          
-            resi    = sqrt(sum((time-fit*coefs).^2)/sum(time.^2));
-
-            % store coords of pixel, time, coefs, and error
-
-            XYT(num_pix,:) = [xyt(num_pix,:), coefs',resi];
-        end
-    end
+    % function [XYT] = xyt_matrix(M,xyt,space_window_width,time_window_width,xres,yres)
+    % 
+    %     % This is your final output matrix that you will build up.
+    %     XYT = zeros(M,14);
+    % 
+    %     for num_pix = 1:M %go through each pixel change back to 1
+    % 
+    %         % Find how far spatially and temporally each pixel is from the one you
+    %         % are evaluating
+    % 
+    %         dx = abs(xyt(:,1)-xyt(num_pix,1));
+    %         dy=abs(xyt(:,2)-xyt(num_pix,2));
+    %         dt=abs(xyt(:,3)-xyt(num_pix,3));
+    % 
+    %         % Find the pixels near your pixel
+    % 
+    %         near = find ((sqrt(dx.^2 + dy.^2) <= space_window_width) & (isfinite(xyt(:,3))) & (dt <= time_window_width));
+    %         len = length(near);
+    % 
+    %         how_many = 8;
+    % 
+    %         if len>how_many
+    % 
+    %             % xyt(near, 1:2) - get the x and y coord of each near pixel
+    %             % ones(length(near),1) - make a vector of 1s the size of the number of
+    %             % near pixels
+    %             % xyt(i, 1:2) - get the x and y coords of your pixel
+    %             % substract your pixel's location from all the near neighbors. make a
+    %             % vector which says for each near pixel, how far (x and y) it is from
+    %             % your pixel
+    %             % xyn = xyt(near, 1:2) - ones(length(near),1) * xyt(num_pix,1:2);
+    %             %Electro Map
+    %             xyn = xyt(near, :) - ones(length(near),1) * xyt(num_pix,:);
+    % 
+    %             % convert pixel distance to physical distance. xres and yres are user
+    %             % inputs
+    %             % 
+    %             x = xyn(:,1) * xres;
+    %             y = xyn(:,2) * yres;
+    %             time = xyt(near,3);
+    % 
+    %             % time=xyn(:,3);
+    %             % x=xyn(:,1);
+    %             % y=xyn(:,2);
+    % 
+    %             % create your A matrix. (look at powerpoint for more info)
+    % 
+    %             % fit = [x.^2  y.^2  x.*y  x  y  ones(length(near),1)];
+    % 
+    %             %ElectroMap
+    % 
+    %             fit = [ones(len,1) x y x.^2 y.^2 x.*y];
+    % 
+    %             % find coefficienta (a-f) such that Aa=t. these are your a-f
+    % 
+    %             coefs = fit\time;
+    % 
+    %             % From ElectroMap
+    %             var_t = sum((time-mean(time)).^2);
+    %             resi = sqrt(sum((time-fit*coefs).^2)/var_t);
+    %             resilin = sqrt(sum((time-fit(:,1:3)*coefs(1:3)).^2)/var_t);
+    % 
+    %             % find error. not sure why they use this specific error and what a
+    %             % meaningful number would be. we want it to be small.
+    % 
+    %             % resi    = sqrt(sum((time-fit*coefs).^2));
+    %             % resilin = sqrt(sum((time-fit(:,4:6)*coefs(4:6)).^2)/sum(time.^2));
+    % 
+    %             % store coords of pixel, time, coefs, and error
+    % 
+    %             XYT(num_pix,:) = [xyt(num_pix,:), coefs',resi, len, cond(fit), resilin,sqrt(var_t)];
+    %         end
+    % 
+    %     end
+    % end
 
 % Function name: xyt_matrix_third
 % Function Summary: Same as the previous function but using a third degree
@@ -314,82 +421,89 @@ end
 % Outputs: XYT matrix which contains (per pixel): x coords, y coords, act
 % time, coefficients, and residual error.     
 
-    function [XYT] = xyt_matrix_third(M,xyt,space_window_width,time_window_width,xres,yres)
-
-        XYT = zeros(M,14);
-
-        for num_pix = 1:M %go through each pixel
-
-            % Find how far spatially and temporally each pixel is from the one you
-            % are evaluating
-
-            dx = abs(xyt(:,1)-xyt(num_pix,1));
-            dy=abs(xyt(:,2)-xyt(num_pix,2));
-            dt=abs(xyt(:,3)-xyt(num_pix,3));
-
-            % Find the pixels near your pixel
-
-            near = find ((sqrt(dx.^2 + dy.^2) <= space_window_width) & (isfinite(xyt(:,3))) & (dt <= time_window_width));
-
-            %
-
-            % xyt(near, 1:2) - get the x and y coord of each near pixel
-            % ones(length(near),1) - make a vector of 1s the size of the number of
-            % near pixels
-            % xyt(i, 1:2) - get the x and y coords of your pixel
-            % substract your pixel's location from all the near neighbors. make a
-            % vector which says for each near pixel, how far (x and y) it is from
-            % your pixel
-            xyn = xyt(near, 1:2) - ones(length(near),1) * xyt(num_pix,1:2);
-
-            % convert pixel distance to physical distance. xres and yres are user
-            % inputs
-
-            x = xyn(:,1) * xres;
-            y = xyn(:,2) * yres;
-            time = xyt(near,3);
-
-            % create your A matrix. (look at powerpoint for more info)
-
-            fit     = [y.*x.^2 x.*y.^2 y.^3 x.^3 x.*y y.^2 x.^2 y x ones(length(near),1)];
-
-            % find coefficienta (a-f) such that Aa=t. these are your a-f
-
-            coefs = fit\time;
-
-            % find error. not sure why they use this specific error and what a
-            % meaningful number would be. we want it to be small.
-
-            resi    = sqrt(sum((time-fit*coefs).^2)/sum(time.^2));
-
-            % store coords of pixel, time, coefs, and error
-
-            XYT(num_pix,:) = [xyt(num_pix,:), coefs',resi];
-        end
-    end
-
-% Function name: vel_calc_third
-% Function Summary: Same as function below just using the third degree
-% polynomial (eerything is the same but the coefficient number you use is
-% different which is why this is separate function).
-% Inputs: XYT - matrix with pixels info including coefficients for the
-% surface at each pixel. max values of velocities in our range (user
-% defined). 
-% Outputs: Vx - line vector of x velocities for each pixel in your ROI. Vy
-% - line vector of y velocities for each pixel in your ROI. V - line
-% vector of total velocity magnitude for each pixel in your ROI.
-    function [Vx, Vy, V] = vel_calc_third(XYT,max_Vx,max_Vy)
-
-        Vx=(XYT(:,9)./(XYT(:,8).^2 + XYT(:,9).^2))*100; % times 100 to go from mm/msec to cm/sec
-        Vy=-(XYT(:,8)./(XYT(:,8).^2 + XYT(:,9).^2))*100;
-        Vx(abs(Vx) > max_Vx) = NaN;
-        Vy(abs(Vy) > max_Vy) = NaN;
-        % standard_dev = std(Vx);
-        % standard_dev_y = std(Vy);
-        % Vx(abs(Vx) > standard_dev*2) = NaN;
-        % Vy(abs(Vy) > standard_dev_y*2) = NaN;
-        V = sqrt(Vx.^2+Vy.^2);
-    end
+%     function [XYT] = xyt_matrix_third(M,xyt,space_window_width,time_window_width,xres,yres)
+% 
+%         XYT = zeros(M,15);
+% 
+%         for num_pix = 1:M %go through each pixel
+% 
+%             % Find how far spatially and temporally each pixel is from the one you
+%             % are evaluating
+% 
+%             dx = abs(xyt(:,1)-xyt(num_pix,1));
+%             dy=abs(xyt(:,2)-xyt(num_pix,2));
+%             dt=abs(xyt(:,3)-xyt(num_pix,3));
+% 
+%             % Find the pixels near your pixel
+% 
+%             near = find ((sqrt(dx.^2 + dy.^2) <= space_window_width) & (isfinite(xyt(:,3))) & (dt <= time_window_width));
+% 
+%             %
+% 
+%             % xyt(near, 1:2) - get the x and y coord of each near pixel
+%             % ones(length(near),1) - make a vector of 1s the size of the number of
+%             % near pixels
+%             % xyt(i, 1:2) - get the x and y coords of your pixel
+%             % substract your pixel's location from all the near neighbors. make a
+%             % vector which says for each near pixel, how far (x and y) it is from
+%             % your pixel
+%             xyn = xyt(near, 1:2) - ones(length(near),1) * xyt(num_pix,1:2);
+% 
+%             % convert pixel distance to physical distance. xres and yres are user
+%             % inputs
+% 
+%             x = xyn(:,1) * xres;
+%             y = xyn(:,2) * yres;
+%             time = xyt(near,3);
+% 
+%             % create your A matrix. (look at powerpoint for more info)
+% 
+%             fit     = [y.*x.^2 x.*y.^2 y.^3 x.^3 x.*y y.^2 x.^2 y x ones(length(near),1)];
+% 
+%             % find coefficienta (a-f) such that Aa=t. these are your a-f
+% 
+%             coefs = fit\time;
+% 
+%             % find error. not sure why they use this specific error and what a
+%             % meaningful number would be. we want it to be small.
+%             var_t = sum((time-mean(time)).^2);
+%                 resi = sqrt(sum((time-fit*coefs).^2)/var_t);
+%                 resilin = sqrt(sum((time-fit(:,8:10)*coefs(8:10)).^2)/var_t);
+% 
+%             % store coords of pixel, time, coefs, and error
+% 
+%             XYT(num_pix,:) = [xyt(num_pix,:), coefs',resi, resilin];
+% 
+% 
+%         end
+%     end
+% 
+% % Function name: vel_calc_third
+% % Function Summary: Same as function below just using the third degree
+% % polynomial (eerything is the same but the coefficient number you use is
+% % different which is why this is separate function).
+% % Inputs: XYT - matrix with pixels info including coefficients for the
+% % surface at each pixel. max values of velocities in our range (user
+% % defined). 
+% % Outputs: Vx - line vector of x velocities for each pixel in your ROI. Vy
+% % - line vector of y velocities for each pixel in your ROI. V - line
+% % vector of total velocity magnitude for each pixel in your ROI.
+%     function [Vx, Vy, V] = vel_calc_third(XYT,max_Vx,max_Vy)
+% 
+%         Vx=(XYT(:,12)./(XYT(:,11).^2 + XYT(:,12).^2))*100; % times 100 to go from mm/msec to cm/sec
+%         Vy=(XYT(:,11)./(XYT(:,11).^2 + XYT(:,12).^2))*100;
+%         Vx(abs(Vx) > max_Vx) = NaN;
+%         Vy(abs(Vy) > max_Vy) = NaN;
+%         % standard_dev = std(Vx);
+%         % standard_dev_y = std(Vy);
+%         % Vx(abs(Vx) > standard_dev*2) = NaN;
+%         % Vy(abs(Vy) > standard_dev_y*2) = NaN;
+%         V = sqrt(Vx.^2+Vy.^2);
+%         sdev = nanstd(V);
+%         avg = nanmean(V);
+%         V(V>(avg+sdev+sdev)) = NaN;
+%         V(V<(avg-sdev-sdev)) = NaN;
+%     end
 
 % Function name: vel_calc
 % Function Summary: Using the computed coefficients, determine velocities
@@ -401,25 +515,29 @@ end
 % - line vector of y velocities for each pixel in your ROI. V - line
 % vector of total velocity magnitude for each pixel in your ROI.
 
-    function [Vx, Vy, V] = vel_calc(XYT,max_Vx,max_Vy)
-
-        % NEED TO LOOK MORE INTO THIS. When you compute coefficients, only
-        % two of them differ from zero so your derivative wrt x is just the
-        % 7th coefficient. the derivative wrt y is just the 8th
-        % coefficient. % to find Vx, we need to do Tx / (Tx2 + Ty2) where
-        % Tx is the derivative wrt x, Ty is the derivative wrt y.; Same for
-        % Vy
-        Vx = (XYT(:,7)./(XYT(:,7).^2 + XYT(:,8).^2))*100; % times 100 to go from mm/msec to cm/sec
-        Vy = (XYT(:,8)./(XYT(:,7).^2 + XYT(:,8).^2))*100;
-        Vx(abs(Vx) > max_Vx) = NaN;
-        Vy(abs(Vy) > max_Vy) = NaN;
-        % standard_dev = std(Vx);
-        % standard_dev_y = std(Vy);
-        % Vx(abs(Vx) > standard_dev*2) = NaN;
-        % Vy(abs(Vy) > standard_dev_y*2) = NaN;
-        % Get velocity magnitude
-        V = sqrt(Vx.^2+Vy.^2);
-    end
+    % function [Vx, Vy, V] = vel_calc(XYT,max_Vx,max_Vy)
+    % 
+    %     % NEED TO LOOK MORE INTO THIS. When you compute coefficients, only
+    %     % two of them differ from zero so your derivative wrt x is just the
+    %     % 7th coefficient. the derivative wrt y is just the 8th
+    %     % coefficient. % to find Vx, we need to do Tx / (Tx2 + Ty2) where
+    %     % Tx is the derivative wrt x, Ty is the derivative wrt y.; Same for
+    %     % Vy
+    %     Vx = (XYT(:,5)./(XYT(:,5).^2 + XYT(:,6).^2))*100; % times 100 to go from mm/msec to cm/sec
+    %     Vy = (XYT(:,6)./(XYT(:,5).^2 + XYT(:,6).^2))*100;
+    %     Vx(abs(Vx) > max_Vx) = NaN;
+    %     Vy(abs(Vy) > max_Vy) = NaN;
+    %     % standard_dev = std(Vx);
+    %     % standard_dev_y = std(Vy);
+    %     % Vx(abs(Vx) > standard_dev*2) = NaN;
+    %     % Vy(abs(Vy) > standard_dev_y*2) = NaN;
+    %     % Get velocity magnitude
+    %     V = sqrt(Vx.^2+Vy.^2);
+    %     sdev = nanstd(V);
+    %     avg = nanmean(V);
+    %     V(V>(avg+sdev+sdev)) = NaN;
+    %     V(V<(avg-sdev-sdev)) = NaN;
+    % end
 
 % % Can use this function to create the activation map for just one AP.
 %     function [actMap1, mask] = activationmap(stat, Fs, endp, data)

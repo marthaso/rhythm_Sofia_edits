@@ -16,12 +16,11 @@
 % when each pixel depolarizaes wrt the first one. A figure will be created
 % plotting this, the user can save it if wanted.
 
-function [aMap1] = aMap(data,stat,endp,rect,Fs,bg,cmap,movie_scrn, handles) 
+function [aMap1,mask3] = aMap(data,stat,endp,rect,Fs,bg,cmap,movie_scrn, handles) 
 
 %% Get a mask to get rid of background. Can upload one or clean one using the maskfix function.
 mask3 = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\mask3_new.txt');
 mask3 = load(mask3);
-% mask3 = maskfix;
 
 %% Multiply your data by the mask to get rid of background.
 data = data.*mask3;
@@ -35,6 +34,8 @@ else
     endp=round(endp*Fs);
     [aMap1] = activationmap(stat, Fs, endp, data); % get an aMap of only one beat   
 end
+
+% mask3 = maskfix(aMap1);
 
 %% If they selected a specific area, only display that area
 % Make a mask of 1s in the selected rectangle. 0 everywhere else.
@@ -53,24 +54,125 @@ figure;
 G = real2rgb(bg, 'gray');
 imagesc(G)
 hold on
-% Ask the user if they want isolines or not
-isolines = menu('Draw Isolines?','Yes','No');
-if isolines == 1
-    % Right now, isolines is set to maximum act. time divided by 2 (1 line every 2 ms). Can
-    % change this number if you want more or less lines. 
-    contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
-else
-    % no isolines.
-    contourf(aMap1,max(max(aMap1)),'LineColor','none');
-end
+% % Ask the user if they want isolines or not
+% isolines = menu('Draw Isolines?','Yes','No');
+% if isolines == 1
+%     % Right now, isolines is set to maximum act. time divided by 2 (1 line every 2 ms). Can
+%     % change this number if you want more or less lines. 
+%     contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
+% else
+%     % no isolines.
+%     contourf(aMap1,max(max(aMap1)),'LineColor','none');
+% end
+% colormap (flipud(jet));
+% c=colorbar;
+% axis off
+% title('Activation Map')
+% c.Label.String = 'Activation Time (ms)';
+
+% Don't ask user, just do two figures
+contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
 colormap (flipud(jet));
 c=colorbar;
 axis off
 title('Activation Map')
 c.Label.String = 'Activation Time (ms)';
 
-% Don't ask user, just do two figures
-contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
+figure;
+G = real2rgb(bg, 'gray');
+imagesc(G)
+hold on
+contourf(aMap1,max(max(aMap1)),'LineColor','none');
+colormap (flipud(jet));
+c=colorbar;
+axis off
+title('Activation Map')
+c.Label.String = 'Activation Time (ms)';
+
+%% Clean up activation map
+
+% Check all neighbors. If at least 4 of them are more than 10 msec different. Set
+% pixel to NA. 
+
+for i = 2:255
+    for j = 2:255
+        our_pixel = aMap1(i,j);
+        neighbor1 = aMap1(i-1, j-1);
+        neighbor2 = aMap1(i, j-1);
+        neighbor3 = aMap1(i+1, j-1);
+        neighbor4 = aMap1(i-1, j);
+        neighbor5 = aMap1(i+1, j);
+        neighbor6 = aMap1(i-1, j+1);
+        neighbor7 = aMap1(i, j+1);
+        neighbor8 = aMap1(i+1, j+1);
+        dif1 = abs(our_pixel - neighbor1);
+        dif2 = abs(our_pixel - neighbor2);
+        dif3 = abs(our_pixel - neighbor3);
+        dif4 = abs(our_pixel - neighbor4);
+        dif5 = abs(our_pixel - neighbor5);
+        dif6 = abs(our_pixel - neighbor6);
+        dif7 = abs(our_pixel - neighbor7);
+        dif8 = abs(our_pixel - neighbor8);
+        difs = [dif1, dif2, dif3, dif4, dif5, dif6, dif7, dif8];
+        counter = 0;
+        for p = 1:numel(difs)
+            if difs(p) > 10
+                counter = counter + 1;
+            end
+        end
+        if counter >= 4
+            aMap1(i,j) = NaN;
+        
+        end
+    end
+end
+
+figure;
+G = real2rgb(bg, 'gray');
+imagesc(G)
+hold on
+contourf(aMap1,max(max(aMap1)),'LineColor','none');
+colormap (flipud(jet));
+c=colorbar;
+axis off
+title('Activation Map')
+c.Label.String = 'Activation Time (ms)';
+
+% Check all neighbors. If at least 4 of them are NaN, turn to NaN. Will
+% have to think what to do about edges.
+numofneighbors = 4;
+
+for i = numofneighbors+1:256-numofneighbors
+    for j = numofneighbors+1:256-numofneighbors
+        if isnan(aMap1(i,j))
+            neighbors =[];
+            for t = 1:numofneighbors
+                neighbor1 = aMap1(i-t, j-t);
+                neighbor9 = aMap1()
+                neighbor2 = aMap1(i, j-t);
+                neighbor3 = aMap1(i+t, j-t);
+                neighbor4 = aMap1(i-t, j);
+                neighbor5 = aMap1(i+t, j);
+                neighbor6 = aMap1(i-t, j+t);
+                neighbor7 = aMap1(i, j+t);
+                neighbor8 = aMap1(i+t, j+t);
+                neighbors = [neighbors, neighbor1, neighbor2, neighbor3, neighbor4, neighbor5, neighbor6, neighbor7, neighbor8];
+            end
+            meanvalue = nanmean(neighbors);
+            aMap1(i,j) = meanvalue;
+        end
+
+    end
+end
+
+aMap1 = aMap1.*mask3;
+aMap1(aMap1==0) = NaN;
+
+figure;
+G = real2rgb(bg, 'gray');
+imagesc(G)
+hold on
+contourf(aMap1,max(max(aMap1)),'LineColor','none');
 colormap (flipud(jet));
 c=colorbar;
 axis off

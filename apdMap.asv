@@ -79,12 +79,9 @@ for i = 1:10:size(ap_data,1)
         derivatives = diff(pixel);
         % If it's outisde the mask, the derivatives will be zero.
         if mean(derivatives) ~= 0 % if it is not background...
-            %og
-            %[pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.05,'MinPeakDistance',200); % find all peaks. prominence and distance
+            [pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.05,'MinPeakDistance',200); % find all peaks. prominence and distance
             % can and might be changed if peaks are not identified
             % correctly
-            % edited at CL 200
-             [pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.05,'MinPeakDistance',100);
             count = count + 1;
             all_derivatives(count) = {locs}; % store all the peaks of that pixel
         end
@@ -252,11 +249,9 @@ for i = 1:numel(rounded_final_peaks)
             % plot(pixel_AP)
 
             first_values = pixel_AP(1:30);
-            %first_values = first_values(first_values>0.5);
-            first_values = first_values(first_values>0.9);
+            first_values = first_values(first_values>0.5);
             final_values = pixel_AP(250:end);
-            %final_values = final_values(final_values>0.5);
-            final_values = final_values(final_values>0.9);
+            final_values = final_values(final_values>0.5);
 
             if isempty(first_values) && isempty(final_values)
 
@@ -399,7 +394,7 @@ end
 g=[];
 data_2 = [];
 C = cat(3,APD_heart{:});
-for i = 1:4
+for i = 1:2
     data_3 = C(:,:,i);
     data_3 = reshape(data_3,[],1);
     data_2 = [data_2;data_3];

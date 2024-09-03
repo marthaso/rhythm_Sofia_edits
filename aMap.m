@@ -40,6 +40,8 @@ end
 %% If they selected a specific area, only display that area
 % Make a mask of 1s in the selected rectangle. 0 everywhere else.
 mask_ROI = zeros(size(mask3));
+rect = round(rect);
+rect = abs(rect);
 mask_ROI(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
 
 % Set values to 0 outside of the rect
@@ -88,6 +90,39 @@ c=colorbar;
 axis off
 title('Activation Map')
 c.Label.String = 'Activation Time (ms)';
+
+%% Clean up activation map
+
+[cleanaMap] = clean_neighbors(aMap1,bg,mask3);
+[cleanaMap] = clean_neighbors(cleanaMap,bg,mask3);
+[cleanaMap] = clean_neighbors(cleanaMap,bg,mask3);
+
+figure;
+offset2 = min(min(cleanaMap));
+cleanaMap = cleanaMap - offset2*ones(size(cleanaMap,1),size(cleanaMap,2));
+G = real2rgb(bg, 'gray');
+imagesc(G)
+hold on
+contourf(cleanaMap,max(max(cleanaMap))/2,'LineColor','k');
+colormap (flipud(jet));
+c=colorbar;
+axis off
+title('Activation Map')
+c.Label.String = 'Activation Time (ms)';
+
+
+figure;
+G = real2rgb(bg, 'gray');
+imagesc(G)
+hold on
+contourf(cleanaMap,max(max(cleanaMap)),'LineColor','none');
+colormap (flipud(jet));
+c=colorbar;
+axis off
+title('Activation Map')
+c.Label.String = 'Activation Time (ms)';
+
+aMap1 = cleanaMap;
 
 
 

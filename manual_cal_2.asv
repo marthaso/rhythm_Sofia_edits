@@ -1,0 +1,31 @@
+%% Manual calc #2
+function [vels] = manual_cal_2(activation_times)
+
+num_of_neighbors = 1;
+vels = [];
+activation_times = activation_times.*0.001;
+
+for i = num_of_neighbors+1:size(activation_times,1)-num_of_neighbors
+    for j = num_of_neighbors+1:size(activation_times,2)-num_of_neighbors
+        % your pixel is (i,j)
+        % get neighbors:
+        neighbor_1 = activation_times(i-num_of_neighbors,j);
+        neighbor_2 = activation_times(i+num_of_neighbors,j);
+        neighbor_3 = activation_times(i, j+num_of_neighbors);
+        neighbor_4 = activation_times(i, j-num_of_neighbors);
+        % get velocities
+        distance = 0.01749 * num_of_neighbors; %cm
+        if 
+        velocity_1 = abs(distance/(neighbor_1-activation_times(i,j)));
+        velocity_2 = abs(distance/(neighbor_2-activation_times(i,j)));
+        velocity_3 = abs(distance/(neighbor_3-activation_times(i,j)));
+        velocity_4 = abs(distance/(neighbor_4-activation_times(i,j)));
+        final_vel = (velocity_1+velocity_2+velocity_3+velocity_4)/4;
+        vels(i,j) = final_vel;
+    end
+end
+
+average_vel = nanmean(nanmean(vels))
+end
+
+

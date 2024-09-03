@@ -46,6 +46,10 @@ end
 
 mode_val = mode(num_peaks); % what value is repeated the most? We expect most pixels
 % to find the correct number and few outliers.
+if mode_val == 0
+    num_peaks(num_peaks==0) = NaN;
+    mode_val = mode(num_peaks);
+end
 peaks = []; % Here we will store the peak locations
 
 %% Once again, go through each pixel. If that pixel has the right number of peaks,
@@ -75,7 +79,7 @@ figure
 plot(squeeze(data(100,100,:)))
 hold on
 plot(final_peaks,ones(length(final_peaks),1)*(mean(data(100,100,:))+std(data(100,100,:))),'o')
-
+% 
 % figure
 % plot(squeeze(data(50,50,:)))
 % hold on
