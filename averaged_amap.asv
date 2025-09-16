@@ -26,7 +26,7 @@ for i = 1:10:size(data,1)
         derivatives = diff(pixel);
         % If it's outisde the mask, the derivatives will be zero.
         if mean(derivatives) ~= 0 % if it is not background...
-            [pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.025,'MinPeakDistance',200); % find all peaks. prominence and distance
+            [pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.05,'MinPeakDistance',200); % find all peaks. prominence and distance
             % can and might be changed if peaks are not identified
             % correctly
             count = count + 1;
@@ -114,7 +114,7 @@ else % If you didn't choose any peaks, just take all the previous peaks.
     final_peaks_chosen = final_peaks;
 end
 
-close figure 2
+close points
 %% Figure to check it worked correctly. Shouldn't have the excluded peaks. Can uncomment if you want to see it. 
 % figure
 % plot(squeeze(data(100,100,:)))

@@ -19,7 +19,7 @@
 function [aMap1,mask3] = aMap(data,stat,endp,rect,Fs,bg,cmap,movie_scrn, handles) 
 
 %% Get a mask to get rid of background. Can upload one or clean one using the maskfix function.
-mask3 = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\mask3_new.txt');
+mask3 = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\aug7.txt');
 mask3 = load(mask3);
 
 %% Multiply your data by the mask to get rid of background.
@@ -51,51 +51,51 @@ offset1 = min(min(aMap1));
 aMap1 = aMap1 - offset1*ones(size(aMap1,1),size(aMap1,2));
 
 %% Plot it
-figure;
-% First plot the gray background
-G = real2rgb(bg, 'gray');
-imagesc(G)
-hold on
-% % Ask the user if they want isolines or not
-% isolines = menu('Draw Isolines?','Yes','No');
-% if isolines == 1
-%     % Right now, isolines is set to maximum act. time divided by 2 (1 line every 2 ms). Can
-%     % change this number if you want more or less lines. 
-%     contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
-% else
-%     % no isolines.
-%     contourf(aMap1,max(max(aMap1)),'LineColor','none');
-% end
+% figure;
+% % First plot the gray background
+% G = real2rgb(bg, 'gray');
+% imagesc(G)
+% hold on
+% % % Ask the user if they want isolines or not
+% % isolines = menu('Draw Isolines?','Yes','No');
+% % if isolines == 1
+% %     % Right now, isolines is set to maximum act. time divided by 2 (1 line every 2 ms). Can
+% %     % change this number if you want more or less lines. 
+% %     contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
+% % else
+% %     % no isolines.
+% %     contourf(aMap1,max(max(aMap1)),'LineColor','none');
+% % end
+% % colormap (flipud(jet));
+% % c=colorbar;
+% % axis off
+% % title('Activation Map')
+% % c.Label.String = 'Activation Time (ms)';
+% 
+% % Don't ask user, just do two figures
+% contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
+% colormap (flipud(jet));
+% c=colorbar;
+% axis off
+% title('Activation Map')
+% c.Label.String = 'Activation Time (ms)';
+% 
+% figure;
+% G = real2rgb(bg, 'gray');
+% imagesc(G)
+% hold on
+% contourf(aMap1,max(max(aMap1)),'LineColor','none');
 % colormap (flipud(jet));
 % c=colorbar;
 % axis off
 % title('Activation Map')
 % c.Label.String = 'Activation Time (ms)';
 
-% Don't ask user, just do two figures
-contourf(aMap1,max(max(aMap1))/2,'LineColor','k');
-colormap (flipud(jet));
-c=colorbar;
-axis off
-title('Activation Map')
-c.Label.String = 'Activation Time (ms)';
-
-figure;
-G = real2rgb(bg, 'gray');
-imagesc(G)
-hold on
-contourf(aMap1,max(max(aMap1)),'LineColor','none');
-colormap (flipud(jet));
-c=colorbar;
-axis off
-title('Activation Map')
-c.Label.String = 'Activation Time (ms)';
-
 %% Clean up activation map
 
 [cleanaMap] = clean_neighbors(aMap1,bg,mask3);
-[cleanaMap] = clean_neighbors(cleanaMap,bg,mask3);
-[cleanaMap] = clean_neighbors(cleanaMap,bg,mask3);
+% [cleanaMap] = clean_neighbors(cleanaMap,bg,mask3);
+% [cleanaMap] = clean_neighbors(cleanaMap,bg,mask3);
 
 figure;
 offset2 = min(min(cleanaMap));
@@ -103,6 +103,8 @@ cleanaMap = cleanaMap - offset2*ones(size(cleanaMap,1),size(cleanaMap,2));
 G = real2rgb(bg, 'gray');
 imagesc(G)
 hold on
+cleanaMap = cleanaMap.*mask_ROI;
+cleanaMap(cleanaMap == 0) = NaN;
 contourf(cleanaMap,max(max(cleanaMap))/2,'LineColor','k');
 colormap (flipud(jet));
 c=colorbar;

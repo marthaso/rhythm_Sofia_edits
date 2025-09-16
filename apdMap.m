@@ -84,7 +84,11 @@ for i = 1:10:size(ap_data,1)
             % can and might be changed if peaks are not identified
             % correctly
             % edited at CL 200
-             [pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.05,'MinPeakDistance',100);
+            
+            % APD
+            %[pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.05,'MinPeakDistance',100);
+
+            [pks, locs] = findpeaks(derivatives,'MinPeakProminence',0.01,'MinPeakDistance',100);
             count = count + 1;
             all_derivatives(count) = {locs}; % store all the peaks of that pixel
         end
@@ -124,7 +128,7 @@ final_peaks=[];
 %% make sure peaks are within our time frame. We will add/subtract a few ms to 
 % encompass all pixels. Here we are using 30 ms both ways.
 for i = 1:length(final_peaks1)
-    if final_peaks1(i)>60 && final_peaks1(i)< 4900
+    if final_peaks1(i)>10 && final_peaks1(i)< 4900
         final_peaks=[final_peaks,final_peaks1(i)];
     end
 end
@@ -135,7 +139,7 @@ figure
 plot(squeeze(ap_data(100,100,:)))
 hold on
 plot(final_peaks,ones(length(final_peaks),1)*(mean(ap_data(100,100,:))+std(ap_data(100,100,:))),'o')
-% 
+
 % figure
 % plot(squeeze(data(50,50,:)))
 % hold on
@@ -220,7 +224,7 @@ for i = 1:numel(rounded_final_peaks)
         % If you are at the last AP. Set the end of the AP to the
         % start plus whatever the max APD allowable was.
         AP_end = (rounded_final_peaks(i)) + maxapd;
-        AP = ap_data(:,:,(rounded_final_peaks(i)-50):AP_end);
+        AP = ap_data(:,:,(rounded_final_peaks(i)):AP_end);
     end
 
     % So now AP is a matrix. It has all of our pixels, it has the time
@@ -317,7 +321,9 @@ for i = 1:numel(rounded_final_peaks)
     % imagesc(AP_indices)
     % colorbar
     % title(num2str(i))
-    apdmap_1 (i) = {AP_indices};
+    % apdmap_1 (i) = {AP_indices};
+    save(['C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\cal_aug7 ', num2str(i), '.mat'], 'AP_indices');
+    %save(['C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\calcium_aug7_CAD ', num2str(i), '.mat'],'AP_indices','-ascii', '-tabs')
     % AP_indices = reshape(AP_indices,1,[]);
     % figure
     % boxplot(AP_indices)
@@ -365,6 +371,7 @@ imagesc(average_apd)
 colorbar
 title('Average')
 disp(nanmean(nanmean(average_apd)))
+save('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\cal_aug7_average.mat', 'average_apd');
 average_apd=reshape(average_apd,[],1);
 data=[];
 g=[];

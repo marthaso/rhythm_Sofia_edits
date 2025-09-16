@@ -1,0 +1,65 @@
+% vol1 = load('cal_aug7 1.mat');
+% vol2 =load('cal_aug7 2.mat');
+% vol5 = load('cal_aug7 5.mat');
+vol6 = load('vol_aug7 6.mat');
+cal6 = load('cal_aug7 6.mat');
+y_coords = [67:177];
+x_coords = [35:155];
+vol6 = vol6.AP_indices(x_coords, y_coords);
+cal6 = cal6.AP_indices(x_coords, y_coords);
+
+average_cal = nanmean(nanmean(cal6));
+cal6(isnan(cal6)) = average_cal;
+
+
+
+% figure
+% imagesc(vol1.AP_indices)
+% figure
+% imagesc(vol2.AP_indices)
+% figure
+% imagesc(vol5.AP_indices)
+figure
+imagesc(vol6)
+colorbar
+
+figure
+imagesc(cal6)
+colorbar
+
+dif = cal6 - vol6;
+
+average_dif = mean(mean(dif));
+dif(dif>50) = average_dif;
+dif(dif<-50) = average_dif;
+
+% y_coords = [67:177];
+% x_coords = [35:155];
+% 
+% newdif = dif(x_coords,y_coords);
+
+figure
+imagesc(dif)
+clim([-50 50]);
+colorbar
+colormap('jet')
+
+
+a=1;
+
+% vol1 = load('vol_aug7 1.mat');
+% vol2 =load('vol_aug7 2.mat');
+% vol5 = load('vol_aug7 5.mat');
+% vol6 = load('vol_aug7 6.mat');
+% 
+% 
+% figure
+% imagesc(vol1.AP_indices)
+% figure
+% imagesc(vol2.AP_indices)
+% figure
+% imagesc(vol5.AP_indices)
+% figure
+% imagesc(vol6.AP_indices)
+% 
+% 

@@ -2,8 +2,8 @@ function [cleanaMap] = clean_neighbors(aMap1,bg,mask3)
 % Check all neighbors. If at least 4 of them are more than 10 msec different. Set
 % pixel to NA.
 
-for i = 2:255
-    for j = 2:255
+for i = 2:255 %255
+    for j = 2:255 %255
         our_pixel = aMap1(i,j);
         neighbor1 = aMap1(i-1, j-1);
         neighbor2 = aMap1(i, j-1);
@@ -52,8 +52,8 @@ end
 % have to think what to do about edges.
 numofneighbors = 2;
 
-for i = numofneighbors+1:256-numofneighbors
-    for j = numofneighbors+1:256-numofneighbors
+for i = numofneighbors+1:256-numofneighbors%256-numofneighbors
+    for j = numofneighbors+1:256-numofneighbors%256-numofneighbors
         if isnan(aMap1(i,j))
             neighbors =[];
             for t = 1:numofneighbors

@@ -137,6 +137,34 @@ for space = 30 % number of spatial neighbors. Change as needed (30)
                 for auto = 2 % Autoscale factor. 2 seems to work well.
                     % Create activation map
                     mask3(isnan(data_avg)) = 0; % set any nan values to 0
+                    figure
+                    % First plot the grayscale background
+                    G = real2rgb(bg, 'gray');
+                    imagesc(G)
+                    hold on
+                    % Plot activation map. Any zeroes in mask 3 will be
+                    % transparent so you can see the background.
+                    imagesc(data_avg, 'AlphaData', mask3)
+                    colormap(flipud(jet));
+                    c = colorbar;
+
+                    % Overlay quiver plot
+                    hold on
+                    magnitude = sqrt(U.^2 + V.^2);
+                    U_unit = U ./ magnitude;
+                    V_unit = V ./ magnitude;
+
+                    % Replace NaNs or Infs that result from dividing by zero
+                    U_unit(~isfinite(U_unit)) = 0;
+                    V_unit(~isfinite(V_unit)) = 0;
+
+                    % Use a fixed scaling factor (e.g., 0.5) to control arrow length
+                    q = quiver(X, Y, U_unit, V_unit, 0.5, 'k');
+
+                    %
+                  
+                    % Create activation map
+                    % mask3(isnan(data_avg)) = 0; % set any nan values to 0
                     % figure
                     % % First plot the grayscale background
                     % G = real2rgb(bg, 'gray');
@@ -148,15 +176,16 @@ for space = 30 % number of spatial neighbors. Change as needed (30)
                     % colormap(flipud(jet));
                     % c = colorbar;
                     % 
-                    % % Overlay quiver plot
-                    % hold on
-                    % q = quiver(X,Y,U,V, auto , 'k');
-                    % title(['Activation Map ', num2str(space), ' Second Degree'])
-                    % c.Label.String = 'Activation Time (ms)';
-                    % axis off
-                    % 
-                    % % Average velocity magnitude
-                    % disp(['Average velocity new: ', num2str(nanmean(Velval)), ' cm/s'])
+                    % q = quiver(X, Y, U, V, auto, 'k');
+
+
+                    %q = quiver(X,Y,U,V, auto , 'k');
+                    title(['Activation Map ', num2str(space), ' Second Degree'])
+                    c.Label.String = 'Activation Time (ms)';
+                    axis off
+
+                    % Average velocity magnitude
+                    disp(['Average velocity new: ', num2str(nanmean(Velval)), ' cm/s'])
 
                     % Display a histogram of the velocity magnitudes
                     figure
@@ -174,6 +203,9 @@ for space = 30 % number of spatial neighbors. Change as needed (30)
                     % Turn any nan values into 0
                     maskvel(isnan(maskvel))=0;
 
+                    %erase large values
+                    maskvel(maskvel>100)=0;
+
                     % Plot velocity values on top of the gray background
                     figure
                     G = real2rgb(bg, 'gray');
@@ -182,12 +214,29 @@ for space = 30 % number of spatial neighbors. Change as needed (30)
                     imagesc(maskvel, 'AlphaData', maskvel)
                     colormap(flipud(jet));
                     c = colorbar;
-                    title(['Velocity Magnitude ', num2str(space), ' Second Degree'])
+                    % title(['Velocity Magnitude ', num2str(space), ' Second Degree'])
                     c.Label.String = 'Velocity Magnitude (cm/s)';
                     axis off
 
+               
                     maskvel(maskvel==0)=NaN;
                     average_3 = nanmean(nanmean(maskvel))
+                    disp('Regional conduction velocity statistics:')
+                    V=maskvel;
+                    meanV=nanmean(V(isfinite(V)));
+                    disp(['The mean value is ' num2str(meanV) ' m/s.'])
+                    medV = median(V(isfinite(V)));
+                    disp(['The median value is ' num2str(medV) ' m/s.'])
+                    stdV = std2(V(isfinite(V)));
+                    disp(['The standard deviation is ' num2str(stdV) '.'])
+                    meanAng = mean(atan2(Vy(isfinite(Vy)),Vx(isfinite(Vy))).*180/pi);
+                    disp(['The mean angle is ' num2str(meanAng) ' degrees.'])
+                    medAng = median(atan2(Vy(isfinite(Vy)),Vx(isfinite(Vy))).*180/pi);
+                    disp(['The median angle is ' num2str(medAng) ' degrees.'])
+                    stdAng = std2(atan2(Vy(isfinite(Vy)),Vx(isfinite(Vy))).*180/pi);
+                    disp(['The standard deviation of the angle is ' num2str(stdAng) '.'])
+                    num_vectors = numel(V(isfinite(V)));
+                    disp(['The number of vectors is ' num2str(num_vectors) '.'])
 
 
 

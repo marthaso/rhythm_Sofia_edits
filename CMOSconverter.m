@@ -261,28 +261,31 @@ if strcmp(oldfilename(end-2:end),'bin')
 end
 if strcmp(oldfilename(end-2:end),'raw')
     file = dir(dirname+"/"+oldfilename);
-    offset=181072;
-    numFrames = (file.bytes-offset)/(2*100*100);
+    %offset=181072;
+    %offset = 458752;
+    offset = 328192;
+    numFrames = (file.bytes-offset)/(2*256*256);
     fileID = fopen([dirname,oldfilename],'r');
     disp(['converting',oldfilename])
     fps = fgetl(fileID);
-    while(~feof(fileID))
-        if  strncmp(strtrim(fps),"<FrameRate>",11)
-            fps = extractBetween(fps,">","<");
-            fps = str2double(fps{1});
-            break
-        else
-            fps = fgetl(fileID);
-        end
-        
-    end
+    % while(~feof(fileID))
+    %     if  strncmp(strtrim(fps),"<FrameRate>",11)
+    %         fps = extractBetween(fps,">","<");
+    %         fps = str2double(fps{1});
+    %         break
+    %     else
+    %         fps = fgetl(fileID);
+    %     end
+    % 
+    % end
     fseek(fileID, offset,'bof');
-    cmosData1 = fread(fileID,numFrames*100*100,'uint16');
+    cmosData1 = fread(fileID,numFrames*256*256,'uint16');
     %outputID = fopen(dirname+"/output.txt",'r');
     %fps = fgetl(outputID);
-    frequency = fps; %str2double(fps);
+    %frequency = fps; %str2double(fps);
+    frequency = 1000;
     %fclose(outputID);
-    cmosData = reshape(cmosData1,[100 100 numFrames]);
+    cmosData = reshape(cmosData1,[256 256 numFrames]);
     bgimage = cmosData(:,:,1);
     fstr='null';
     channel = "null";
