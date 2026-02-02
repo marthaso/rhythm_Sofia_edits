@@ -1409,6 +1409,9 @@ handles.cmap = colormap('Jet'); %saves the default colormap values
         % multiplying by frequency, add one to shift from zero
         start = str2double(get(starttimemap_edit,'String'))*handles.activeCamData.Fs+1;
         fin = str2double(get(endtimemap_edit,'String'))*handles.activeCamData.Fs+1;
+
+        start = 100;
+        fin = 3000;
         % Designate the resolution of the video: ex. 5 = every fifth frame
         step = 2;
         for i = start:step:fin
@@ -1422,11 +1425,12 @@ handles.cmap = colormap('Jet'); %saves the default colormap values
             % Plot ecg data on bottom subplot
             subplot('Position',[0.05, 0.1, 0.9,0.15])
             % Create a variable for the endtime index
-            endtime = round(handles.endtime*handles.activeCamData.Fs);
+            %endtime = round(handles.endtime*handles.activeCamData.Fs);
+            endtime = 3000;
             % Plot the desired
             %plot(handles.time(start:endtime),handles.ecg(start:endtime));
-            x_coord = 50;
-            y_coord = 50;
+            x_coord = 177;
+            y_coord = 105;
             if handles.activeCamData.drawPhase == 0
                 Mframe = handles.activeCamData.cmosData(:,:,i);
                 signal_current = squeeze(handles.activeCamData.cmosData(x_coord,y_coord,start:endtime));
@@ -1434,9 +1438,11 @@ handles.cmap = colormap('Jet'); %saves the default colormap values
                 Mframe = handles.activeCamData.cmosPhase(:,:,i);
                 signal_current = squeeze(handles.activeCamData.cmosPhase(x_coord,y_coord,start:endtime));
             end
-            %plot(handles.time(start:endtime),signal_current, 'LineWidth',1.5);
+            % signal_current = signal_current/abs(max(signal_current));
+            plot(handles.time(start:endtime),signal_current, 'LineWidth',1.5);
+            % plot(signal_current+abs(min(signal_current)))
             %
-            %axis([handles.time(start) handles.time(end) min(signal_current) max(signal_current)]);
+            axis([handles.time(start) handles.time(fin) min(signal_current) max(signal_current)]);
             % Set the xick mark to start from zero
             xlabel('Time (sec)');hold on
             % Image movie frames on the top subplot

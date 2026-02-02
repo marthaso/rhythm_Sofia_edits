@@ -19,7 +19,7 @@ for num_pix = 1:M %go through each pixel change back to 1
     near = find ((sqrt(dx.^2 + dy.^2) <= space_window_width) & (isfinite(xyt(:,3))) & (dt <= time_window_width));
     len = length(near);
 
-    how_many = 8;
+    how_many = 4;
 
     if len>how_many
 

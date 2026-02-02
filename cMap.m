@@ -89,11 +89,11 @@ for space = 30 % number of spatial neighbors. Change as needed (30)
     % spp = spp + 1;
     % space
     % timm = 0;
-    for time_wind = 20 % number of temporal neighbors. Change as needed (10)
+    for time_wind = 30 % number of temporal neighbors. Change as needed (10)
         % timm = timm + 1;
         % time_wind
         % Get all coefficients
-        max_Vx = 500;
+        max_Vx = 80;
         [Vx, Vy, Velval] = xyt_matrix(M,xyt,space,time_wind,xres,yres, max_Vx,max_Vx);
         % disp('Second Error')
         % disp(nanmean(XYT(:,10)))
@@ -204,7 +204,8 @@ for space = 30 % number of spatial neighbors. Change as needed (30)
                     maskvel(isnan(maskvel))=0;
 
                     %erase large values
-                    maskvel(maskvel>100)=0;
+                    maskvel(maskvel>80)=0;
+                    maskvel(maskvel<10)=0;
 
                     % Plot velocity values on top of the gray background
                     figure

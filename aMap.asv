@@ -93,17 +93,7 @@ aMap1 = aMap1 - offset1*ones(size(aMap1,1),size(aMap1,2));
 
 %% plot pixel
 count = 1;
-while count < 50
-    i = randi(250);
-    j = randi(250);
-    if max(mask3(i,j))==0
-    else
-    figure
-    plot(squeeze(data(i,j,3500:4800)))
-    title(sprintf(' x = %d, y = %d', i, j))
-    count = count + 1;
-    end
-end
+while co
 
 
 %% Clean up activation map

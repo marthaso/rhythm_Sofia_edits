@@ -210,14 +210,14 @@ end
  filtered2(filtered2>hdiHigh)=NaN;
  filtered2(filtered2<hdiLow)=NaN;
  plotapd(filtered2)
- savefig(gcf, 'C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_90_hdi.fig')
+ savefig(gcf, 'C:\Users\Sofia\Desktop\PAH\CaTMaps\Oct30\CaT50_90_hdi.fig')
  figure 
  histogram(filtered2(:), 'BinWidth', 5)
 
- save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_matrix_all.mat','apdMap') %change to your directory
-save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_matrix_5_95_pct.mat','filtered_apdMap') %change to your directory
-save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_matrix_90_hdi.mat','filtered2') %change to your directory
-save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_SNR_mask.mat','SNR_mask') %change to your directory
+ save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Oct30\CaT50_matrix_all.mat','apdMap') %change to your directory
+save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Oct30\CaT50_matrix_5_95_pct.mat','filtered_apdMap') %change to your directory
+save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Oct30\CaT50_matrix_90_hdi.mat','filtered2') %change to your directory
+save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Oct30\CaT50_SNR_mask.mat','SNR_mask') %change to your directory
 
 nanmean(filtered2(:))
 nanstd(filtered2(:))
@@ -381,10 +381,10 @@ end
         x=[colLow;colHigh];
         % y=[rowHigh];
         % x=[colHigh];
-        % for pix = 1:length(x)
-        %     [fig] = plot_examples_simple(data,y(pix),x(pix),AP_start_points{y(pix)...
-        %         ,x(pix)},AP_baselines{y(pix),x(pix)},AP_end_points{y(pix),x(pix)},AP_storage{y(pix),x(pix)});
-        % end
+        for pix = 1:length(x)
+            [fig] = plot_examples_simple(data,y(pix),x(pix),AP_start_points{y(pix)...
+                ,x(pix)},AP_baselines{y(pix),x(pix)},AP_end_points{y(pix),x(pix)},AP_storage{y(pix),x(pix)});
+        end
     end
     
     function [alternan_value, odd_average, even_average] = alternan_value_calc(pixel_APDs)
@@ -474,12 +474,11 @@ end
     function [baseline_of_AP] = baseline_of_AP_calc(AP)
         % Find the peak of AP and the lowest point before the peak
         [~,max_place] = findpeaks(AP,'MinPeakDistance',50,'MinPeakProminence',0.3);
-        % if max_place>30
-        %     new_AP = AP(max_place-30:max_place);
-        % else
-        %     new_AP = AP(1:max_place);
-        % end
-        new_AP = AP(1:max_place);
+        if max_place>30
+            new_AP = AP(max_place-30:max_place);
+        else
+            new_AP = AP(1:max_place);
+        end
         baseline_of_AP = min(new_AP);
 
         % averaged_AP = movmean(AP, 5, 'Endpoints', 'discard');

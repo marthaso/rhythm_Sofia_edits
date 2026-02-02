@@ -2,6 +2,6 @@ mask = load('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\sept24.txt');
 figure
 imshow(mask)
 
-mask2(130,65)=0;
+mask2(43,192)=0;
 
 save('C:\Users\Sofia\Desktop\Optical data - Mice\Heart #2\mask3.txt','mask2','-ascii', '-tabs')
