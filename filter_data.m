@@ -25,7 +25,7 @@ function filt_data = filter_data(data, Fs, filter_order, low_freq, high_freq)
 
 %% FIR filter
 % FIR filter implemented with Parks-McClellan Remez Exchange Algorithm
-high_freq = 50;
+% high_freq = 50;
 a0 = [1 1 0 0];
 f0 = [0 high_freq high_freq * 1.25 Fs/2] ./ (Fs/2); 
 b = firpm(filter_order, f0, a0);
