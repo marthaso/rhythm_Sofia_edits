@@ -73,7 +73,7 @@ i_max = area_coords(2) + area_coords(4);
 
 %% SNR mask
 [SNR_mask, SNR_matrix] = SNR_mask_calc(data,length_of_data);
-% SNR_mask = zeros(256,256);
+% If you want to choose just one specific pixel:
 % SNR_mask(160,222) = 1;
 
 % Multiply our data times the SNR mask we generated previously to only
@@ -81,18 +81,15 @@ i_max = area_coords(2) + area_coords(4);
 data = data.*SNR_mask;
 
 %% Now find the APDs for one pixel
+% We'll store the APD, start point, end point and baseline of each pixel so
+% we can visualize it at the end.
 AP_storage = cell(256,256);
 AP_start_points = cell(256,256);
 AP_end_points = cell(256,256);
 AP_baselines = cell(256,256);
+% If you want to see a specific pixel, you can change the "i_min"/"j_min"
 for pix_x = i_min : i_max
-     % pix_x
     for pix_y = j_min : j_max
-        % pix_y
-        
-        % if pix_x == 160 && pix_y==34
-        %     a=1;
-        % end
         % Discard pixels with no signal
         if max(data(pix_x,pix_y,:))==0
 
@@ -102,8 +99,13 @@ for pix_x = i_min : i_max
             pixel_calc = data(pix_x,pix_y,:);
             pixel_calc = normalize_data(pixel_calc);
             pixel_calc = squeeze(pixel_calc);
+            % I found these values to work in our data, can adjust as
+            % needed.
             [pks, locs] =findpeaks(pixel_calc,'MinPeakDistance',50,'MinPeakProminence',0.3,'MaxPeakWidth',110);
             % If it has the right number of peaks, continue with the analysis.
+            % This part of the code was written for alternan calculations
+            % where we have multiple APs. For APD/CaT, we'll usually just
+            % have one AP.
             if length(pks) == 1
                 % Create vectors where you will store APDs, start points, end
                 % points, and baselines for all APs in this pixel.
@@ -113,36 +115,50 @@ for pix_x = i_min : i_max
                 AP_baselines_1 = [];
                 % Now, go through each AP to compute these values.
                 for k = 1:length(pks)
-                    % k = 1: the first AP is the first peak +- 1/2 max APD. Or
-                    % the start/end of signal if it's on the edges
+                    % Right now, the code is setting the start of the AP as
+                    % (maxapd/2) before the peak. If the peak is located
+                    % too close to the start of the signal, then the start
+                    % of AP is just the first data point.
+
                     if locs(k) > maxapd/2
                         start_of_window = locs(k) - (maxapd/2);
                     else
                         start_of_window = 1;
                     end
+
+                    % Right now, the code is setting the end of the AP as
+                    % 140 ms after the peak. If the peak is closer to the
+                    % end of the signal, then the end of AP is just the last data point.
                     if 140+locs(k) < length(pixel_calc)
                         end_of_window = 140+locs(k);
                     else
                         end_of_window = length(pixel_calc);
                     end
+
+                    % Take the start point and end point, your entire AP should be
+                    % within these points. This code works well for rat data so far
+                    % but might need to be modified if there are any
+                    % errors!
                     AP = pixel_calc(round(start_of_window):round(end_of_window));
-                    % Find start point
+
+                    % Find specific start point of AP. Go to function. If
+                    % the function determines there is no start point, then
+                    % store NAN, otherwise, store the start value.
                     [start_of_AP] = start_of_AP_calc(AP);
-                     if ~isnan(start_of_AP)
-                        start_of_AP_pixel = start_of_AP + start_of_window;
-                        
+                    if ~isnan(start_of_AP)
+                        start_of_AP_pixel = start_of_AP;
                     else
-                        
                         start_of_AP_pixel = NaN;
                     end
-                    
-                    
 
-                    % Find baseline
+
+                    % Find baseline (go to function).
                     [baseline_of_AP] = baseline_of_AP_calc(AP);
-                                  
 
-                    % Find endpoint
+
+                    % Find endpoint (go to function). If either the start
+                    % or the end of the AP is NaN, then APD is NaN.
+                    % Otherwise, find APD using end - start.
                     [end_of_AP] = end_of_AP_calc(AP,baseline_of_AP,AP_level);
                     if any(~isnan(end_of_AP)) && any(~isnan(start_of_AP))
                         end_of_AP_pixel = end_of_AP + start_of_window;
@@ -154,7 +170,12 @@ for pix_x = i_min : i_max
                     end
 
 
-
+                    % If anything went wrong and the final apd is not just one value, display
+                    % this message and keep going. Shouldn't happen in many pixels.
+                    % If apd is just one value, check if it's within our
+                    % APD range. If it is, store the apd, start, end,
+                    % baseline, and populate our map. If apd is NaN, store NaN for all these
+                    % values.
                     if ~isscalar(apd)
                         disp('apd is NOT a scalar');
                     else
@@ -174,191 +195,116 @@ for pix_x = i_min : i_max
                     end
 
                 end
-                % For the pixel, store info for all APs
+
+                % For the pixel, store info for all APs. This was written
+                % for the alternan code. We only have one AP per pixel.
+                % Keeping it here for now but can edit code to erase it
+                % later.
                 AP_storage{pix_x,pix_y}=pixel_APDs;
                 AP_start_points{pix_x,pix_y} = AP_start_points_1;
                 AP_baselines{pix_x,pix_y} = AP_baselines_1;
                 AP_end_points{pix_x,pix_y} = AP_end_points_1;
 
-                % Compute alternans
-                % [alternan_value,odd_average, even_average] = alternan_value_calc(pixel_APDs);
-                % alternanceMap(pix_x,pix_y) = alternan_value;
-                % oddAP(pix_x,pix_y) = odd_average;
-                % evenAP(pix_x,pix_y) = even_average;
-
             end
-            
+
         end
     end
 end
-% plot_alternans(alternanceMap)
-% nanmean(nanmean(abs(alternanceMap)))
 
- plotapd(apdMap)
- savefig(gcf, 'C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_all.fig')
- figure 
- histogram(apdMap(:), 'BinWidth', 5)
- filtered_apdMap = apdMap;
- filtered_apdMap(filtered_apdMap<prctile(apdMap(:),5))=NaN;
- filtered_apdMap(filtered_apdMap>prctile(apdMap(:),95))=NaN;
- plotapd(filtered_apdMap)
- savefig(gcf, 'C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_5_95_pct.fig')
- figure 
- histogram(filtered_apdMap(:), 'BinWidth', 5)
- [hdiLow, hdiHigh] = hdi(apdMap,0.90);
- filtered2 = apdMap;
- filtered2(filtered2>hdiHigh)=NaN;
- filtered2(filtered2<hdiLow)=NaN;
- plotapd(filtered2)
- savefig(gcf, 'C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_90_hdi.fig')
- figure 
- histogram(filtered2(:), 'BinWidth', 5)
+%% Plot our apd Map
 
- save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_matrix_all.mat','apdMap') %change to your directory
-save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_matrix_5_95_pct.mat','filtered_apdMap') %change to your directory
+% Function "plotapd" at the bottom of the file.
+% First, take the matrix as it is with all the pixels. Save the generated
+% figure and plot the distribution of values. 
+% plotapd(apdMap)
+% savefig(gcf, 'C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_all.fig')
+% figure
+% histogram(apdMap(:), 'BinWidth', 5)
+% plot_examples(apdMap,data,AP_start_points,AP_baselines,AP_end_points,AP_storage) % plot some example pixels. can comment out if you don't want these extra figures.
+% save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_matrix_all.mat','apdMap') %change to your directory
+
+% % Now we filter the data a bit. This filters the 5th and 9th percentile.
+% % Won't work well unless the data is normally distributed!
+% filtered_apdMap = apdMap;
+% filtered_apdMap(filtered_apdMap<prctile(apdMap(:),5))=NaN;
+% filtered_apdMap(filtered_apdMap>prctile(apdMap(:),95))=NaN;
+% plotapd(filtered_apdMap)
+% savefig(gcf, 'C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_5_95_pct.fig')
+% figure
+% histogram(filtered_apdMap(:), 'BinWidth', 5)
+% plot_examples(filtered_apdMap,data,AP_start_points,AP_baselines,AP_end_points,AP_storage)
+% save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_matrix_5_95_pct.mat','filtered_apdMap') %change to your directory
+
+% Another way of filtering is using the highest density interval. Choose
+% the interval that contains 90% of the data. Works better for data that
+% is not normally distributed. Can visualize and compare histograms to
+% make sure the final data is representative of the whole FOV.
+[hdiLow, hdiHigh] = hdi(apdMap,0.90);
+filtered2 = apdMap;
+filtered2(filtered2>hdiHigh)=NaN;
+filtered2(filtered2<hdiLow)=NaN;
+plotapd(filtered2)
+savefig(gcf, 'C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_90_hdi.fig')
+figure
+histogram(filtered2(:), 'BinWidth', 5)
+plot_examples(filtered2,data,AP_start_points,AP_baselines,AP_end_points,AP_storage)
 save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_matrix_90_hdi.mat','filtered2') %change to your directory
+
+% Save the SNR mask
 save('C:\Users\Sofia\Desktop\PAH\CaTMaps\Jan14\CaT50_SNR_mask.mat','SNR_mask') %change to your directory
 
+% Display the mean and std dev of the data 90% hdi.
 nanmean(filtered2(:))
-nanstd(filtered2(:))
-
-% plot_examples_simple(data,x,y,AP_start_points,AP_baselines,AP_end_points,APD)
-
-
-total_mean=nanmean(nanmean(apdMap))
-total_std=nanstd(apdMap(:))
-one_std = total_mean+total_std;
-two_stds = total_mean+total_std+total_std;
-two_stds_min = total_mean-total_std-total_std;
-figure
-histogram(apdMap)
-apdMap_one = apdMap;
-apdMap_one(apdMap_one>one_std)=NaN;
-apdMap_two = apdMap;
-apdMap_two(apdMap_two>two_stds)=NaN;
-% apdMap_two(apdMap_two<two_stds_min)=NaN;
-% plotapd(apdMap_one)
-% total_mean=nanmean(nanmean(apdMap_one))
-% total_std=nanstd(apdMap_one(:))
-% figure
-% histogram(apdMap_one)
-% plotapd(apdMap_two)
-% total_mean=nanmean(nanmean(apdMap_two))
-% total_std=nanstd(apdMap_two(:))
-% figure
-% histogram(apdMap_two)
-
-    
+nanstd(filtered2(:)) 
 
 
 
+    function [hdiLow, hdiHigh] = hdi(apdMap, range)
+        % Compute highest density interval
+       
+        % If you don't specify range, set it to 0.95 
+        if nargin < 2
+            range = 0.95;
+        end
 
+        % Remove NaNs just in case
+        apdMap = apdMap(~isnan(apdMap));
 
-figure
-imagesc(apdMap)
-[clean_alternanceMap] = clean_Map(alternanceMap);
-plot_alternans(clean_alternanceMap)
-nanmean(nanmean(clean_alternanceMap))
-% figure
-% histogram(alternanceMap)
-figure
-histogram(clean_alternanceMap)
-total_mean = nanmean(nanmean(abs(clean_alternanceMap)))
-total_odd = nanmean(nanmean(oddAP))
-total_even = nanmean(nanmean(evenAP))
-total_std = nanstd(clean_alternanceMap(:))
-% plot examples
-% find pixels with signal
-% [y,x] = find(SNR_mask==1);
-% number of points you want
-%k = 10;
+        % Sort samples
+        x = sort(apdMap(:));
+        n = numel(x);
 
-% take absolute value
-A = SNR_matrix.*SNR_mask;
-A(A==0) = NaN;
+        % Number of points in interval
+        m = floor(range * n);
 
-a = [];
-k=1;
-mini = 0;
-[~, mini] = mink(A(:), 1000);
-while length(a) < 5
-    
-    if ~isnan(clean_alternanceMap(mini(k)))
-        a = [a,mini(k)];
+        % All candidate interval widths
+        widths = x(m+1:end) - x(1:end-m);
+
+        % Find shortest interval
+        [~, idx] = min(widths);
+
+        % HDI bounds
+        hdiLow  = x(idx);
+        hdiHigh = x(idx + m);
+
     end
-    
-    k = k+1;
-end
-        
-
-
-
-% % get k largest values and their linear indices
-% [~, a] = mink(A(:), k);
-
-% % convert linear indices to (row, col)
-% [y, x] = ind2sub(size(A), a);
-% for pix = 1:5
-%     [fig] = plot_examples_simple(data,y(pix),x(pix),AP_start_points{y(pix)...
-%         ,x(pix)},AP_baselines{y(pix),x(pix)},AP_end_points{y(pix),x(pix)},AP_storage{y(pix),x(pix)},...
-%         clean_alternanceMap(y(pix),x(pix)));
-%     SNR_matrix(y(pix),x(pix))
-% end
-% 
-% [fig] = plot_examples_simple(data,y,x,AP_start_points{y...
-%         ,x},AP_baselines{y,x},AP_end_points{y,x},AP_storage{y,x});
-
-function [hdiLow, hdiHigh] = hdi(apdMap, credMass)
-%HDI Compute Highest Density Interval for a vector of samples
-%
-%   [hdiLow, hdiHigh] = hdi(apdMap, credMass)
-%
-%   apdMap   : vector of samples
-%   credMass : desired mass (default = 0.95)
-
-    if nargin < 2
-        credMass = 0.95;
-    end
-
-    % Remove NaNs just in case
-    apdMap = apdMap(~isnan(apdMap));
-
-    % Sort samples
-    x = sort(apdMap(:));
-    n = numel(x);
-
-    % Number of points in interval
-    m = floor(credMass * n);
-
-    % All candidate interval widths
-    widths = x(m+1:end) - x(1:end-m);
-
-    % Find shortest interval
-    [~, idx] = min(widths);
-
-    % HDI bounds
-    hdiLow  = x(idx);
-    hdiHigh = x(idx + m);
-
-end
-
-% a=1;
-
 
     function plotapd(apdMap)
-
+        % Plot the apdMap
         figure
         h = imagesc(apdMap);
-
         % Mask NaNs
         set(h, 'AlphaData', ~isnan(apdMap))
-
+        % Set image characteristics
         colormap(jet)
         set(gca, 'Color', 'w')   % background = white
         colorbar
         axis image
-        title('APD50-50Hz')
+        title('APD50-50Hz') %change as needed
+    end
 
+    function plot_examples(apdMap,data,AP_start_points,AP_baselines,AP_end_points,AP_storage) 
+        % Find the highest and lowest values and plot those pixels.
         % Flatten matrix
         A = apdMap(:);
 
@@ -366,198 +312,128 @@ end
         validIdx = find(~isnan(A));
         A_valid = A(validIdx);
 
-        % Sort values
-        [sortedVals, sortIdx] = sort(A_valid);
+        % Sort values lowest to highest
+        [~, sortIdx] = sort(A_valid);
 
-        % Indices of lowest and highest values
+        % Indices of lowest and highest values. Find where in the vector
+        % are the highest/lowest values. Right now we are plotting five of
+        % the lowest and five of the highest values. Can change depending
+        % on what we want.
         lowIdx  = validIdx(sortIdx(1:5));
         highIdx = validIdx(sortIdx(end-5:end));
 
-        % Convert linear indices to row/column
+        % Convert linear indices to row/column.
         [rowLow,  colLow]  = ind2sub(size(apdMap), lowIdx);
         [rowHigh, colHigh] = ind2sub(size(apdMap), highIdx);
 
+        % Combine lowest and highest coordinates.
         y=[rowLow;rowHigh];
         x=[colLow;colHigh];
-        % y=[rowHigh];
-        % x=[colHigh];
-        % for pix = 1:length(x)
-        %     [fig] = plot_examples_simple(data,y(pix),x(pix),AP_start_points{y(pix)...
-        %         ,x(pix)},AP_baselines{y(pix),x(pix)},AP_end_points{y(pix),x(pix)},AP_storage{y(pix),x(pix)});
-        % end
-    end
-    
-    function [alternan_value, odd_average, even_average] = alternan_value_calc(pixel_APDs)
-        odds = [];
-        evens = [];
-        for odds_even = 1:2:length(pixel_APDs)-1
-            odds = [odds, pixel_APDs(odds_even)];
-            evens = [evens, pixel_APDs(odds_even+1)];
+        
+        for pix = 1:length(x)
+            figure
+            pixel_example = squeeze(data(y(pix),x(pix),:));
+            plot(pixel_example)
+            hold on
+            baseline = ones(1,length(pixel_example))*AP_baselines{y(pix),x(pix)};
+            plot(1:length(pixel_example),baseline,'LineWidth',3)
+            start_point = ones(1,11)*AP_start_points{y(pix),x(pix)};
+            plot(start_point,0:0.1:1,'LineWidth',3)
+            end_point = ones(1,11)*AP_end_points{y(pix),x(pix)};
+            plot(end_point,0:0.1:1,'LineWidth',3)
+            title(sprintf('APD = %d, x = %d, y = %d', AP_storage{y(pix),x(pix)},y(pix),x(pix)))
+            
         end
-        odd_average = nanmean(odds);
-        even_average = nanmean(evens);
-        alternan_value = odd_average-even_average;
-
-    end
-
-    function plot_alternans(alternanceMap)
-        handles.activeCamData.saveData = alternanceMap;
-        alternanceMap = handles.activeCamData.saveData;
-        figure;
-        imagesc(alternanceMap, 'AlphaData', ~isnan(alternanceMap));
-        set(gca, 'Color', 'k');
-        colormap redblue(256);
-        alternance_max = max(max(abs(alternanceMap(:))));
-        alternance_min = -alternance_max;
-        clim([alternance_min alternance_max]);
-        cb = colorbar;
-        cb_label = sprintf('Alternance for APD%d (ms)', int8(handles.percentAPD));
-        ylabel(cb, cb_label);
-    end
-
-    function [clean_alternanceMap] = clean_Map(alternanceMap)
-        p5  = prctile(alternanceMap(:), 2);
-        p95 = prctile(alternanceMap(:), 98);
-
-        % Replace values outside percentile range with NaN
-        clean_alternanceMap = alternanceMap;
-        clean_alternanceMap(alternanceMap < p5 | alternanceMap > p95) = NaN;
-        % % Extract only the valid (non-NaN) values
-        % vals = alternanceMap(~isnan(alternanceMap));
-        % 
-        % % Number of pixels to threshold (0.5% of all non-NaN values)
-        % n = numel(vals);
-        % kp = ceil(0.01 * n);   % 1%
-        % 
-        % % Sort the values
-        % sortedVals = sort(vals);
-        % 
-        % % Determine lower and upper cutoff thresholds
-        % lowerThresh = sortedVals(kp);
-        % upperThresh = sortedVals(end-kp+1);
-        % 
-        % % Create a mask of values to NaN (both top and bottom 0.5%)
-        % mask = (alternanceMap <= lowerThresh) | (alternanceMap >= upperThresh);
-        % 
-        % % Apply the mask
-        % alternanceMap(mask) = NaN;
-        % clean_alternanceMap = alternanceMap;
     end
 
     function [end_of_AP] = end_of_AP_calc(AP,AP_baseline,AP_level)
-        averaged_AP = movmean(AP, 5, 'Endpoints', 'discard');
-        % Find the peak of AP
-        [~,max_place] = findpeaks(averaged_AP,'MinPeakDistance',50,'MinPeakProminence',0.3);
-        max_place = max(max_place);
-        if isempty(max_place)
-            [~,max_place] = findpeaks(AP,'MinPeakDistance',50,'MinPeakProminence',0.3);
-        end
-        max_place=max(max_place);
+        % % If the pixel is noisy, you can further filter it. For rat data we
+        % % shouldn't need to. Comment out the first two lines if using
+        % this part of the code. Change AP to averaged_AP.
+        % averaged_AP = movmean(AP, 5, 'Endpoints', 'discard');
+        % % Find the peak of AP
+        % [~,max_place] = findpeaks(averaged_AP,'MinPeakDistance',50,'MinPeakProminence',0.3);
+        % max_place = max(max_place);
+        % if isempty(max_place)
+        %     [~,max_place] = findpeaks(AP,'MinPeakDistance',50,'MinPeakProminence',0.3);
+        % end
+
+        % Find the location of the peak of the AP. These values work well
+        % for rat data, can adjust as needed.
+        [~,max_place] = findpeaks(AP,'MinPeakDistance',50,'MinPeakProminence',0.3);
+        max_place=max(max_place); % choose the max peak if there are several
         % Set Baseline as min
         if ~isempty(max_place)
-            norm_AP = max(averaged_AP,AP_baseline);
+            % Take your calculated baseline and set any points lower than
+            % that value equal to baseline. Similarly, set any points above
+            % the peak equal to the peak. These lines help with noisy
+            % pixels!
+            norm_AP = max(AP,AP_baseline); 
             norm_AP(norm_AP>norm_AP(max_place))=norm_AP(max_place);
+            % Now that our minimum is the baseline and the max is our peak,
+            % normalize the data.
             norm_AP = (norm_AP - min(norm_AP)) / (max(norm_AP) - min(norm_AP));
+            % The end point will be AFTER the peak.
             norm_AP = norm_AP(max_place:length(norm_AP));
+            % Find at what point you reach the threshold. Since we
+            % normalized, this is just 0.5 (APD50), 0.2 (APD80), etc. 
             points_lower_than_threshold = find(norm_AP <= AP_level);
+            % If for whatever reason there are not points below our
+            % threshold, set the end point as NaN. If there are points,
+            % choose the first one and add it to peak location. This tells
+            % you the end point in terms of the whole AP.
             if isempty(points_lower_than_threshold)
                 end_of_AP = NaN;
             else
                 end_of_AP = points_lower_than_threshold(1) + max_place;
             end
-        else
+        else % if no peaks are located, there is no end of AP.
             end_of_AP=NaN;
         end
-        
+
     end
-    
+
     function [baseline_of_AP] = baseline_of_AP_calc(AP)
-        % Find the peak of AP and the lowest point before the peak
+        % Find the peak of AP and the lowest point before the peak. If
+        % there is noise and there are points lower than the baseline you
+        % might need to a) change your start time in the RHYTHM GUI or b) set some point
+        % as the AP start (instead of going 1:max_place, you could do
+        % max_place-30:max_place. Depends on your data!)
         [~,max_place] = findpeaks(AP,'MinPeakDistance',50,'MinPeakProminence',0.3);
-        % if max_place>30
-        %     new_AP = AP(max_place-30:max_place);
-        % else
-        %     new_AP = AP(1:max_place);
-        % end
         new_AP = AP(1:max_place);
         baseline_of_AP = min(new_AP);
-
-        % averaged_AP = movmean(AP, 5, 'Endpoints', 'discard');
-        % % Find the peak of AP and the lowest point before the peak
-        % [~,max_place] = findpeaks(averaged_AP,'MinPeakDistance',50,'MinPeakProminence',0.05);
-        % if isempty(max_place)
-        %     [~,max_place] = findpeaks(AP,'MinPeakDistance',50,'MinPeakProminence',0.05);
-        % end
-        % if max_place<length(averaged_AP)
-        %     [~,min_place] = min(averaged_AP(1:max_place));
-        % else
-        %     [~,min_place] = min(averaged_AP);
-        % end
-        % points = [AP(min_place),AP(min_place+1),AP(min_place+2)];
-        % baseline_of_AP = mean(points);
 
     end
 
     function [start_of_AP] = start_of_AP_calc(AP)
+        % The rat data has been pretty clean, max derivative is usually a
+        % good start point for the AP. If it looks off, you can set a
+        % specific range where the start should be, or further filter the
+        % pixel.
+        % You can plot a specific pixel (x,y) by running these lines:
+        % % figure
+        % % plot(squeeze(data(x,y,:)))
+        % You can plot the derivatives:
+        % % hold on
+        % % plot(diff(squeeze(data(x,y,:))))
+        % This can give you an idea of what the derivatives look like and
+        % why it might be choosing the wrong point.
         [~,start_of_AP] = max(diff(AP));
-        % averaged_AP = movmean(AP, 5, 'Endpoints', 'discard');
-        % % Find the peak of AP and the lowest point before the peak
-        % [~,max_place] = findpeaks(averaged_AP,'MinPeakDistance',50,'MinPeakProminence',0.05);
-        % if isempty(max_place)
-        %     [~,max_place] = findpeaks(AP,'MinPeakDistance',50,'MinPeakProminence',0.05);
-        % end
-        % max_place = max(max_place);
-        % [~,min_place]=min(averaged_AP(1:max_place));
-        %         % Normalize AP
-        % averaged_AP = averaged_AP - min(averaged_AP);
-        % averaged_AP = averaged_AP/max(averaged_AP);
-        % if max_place>length(averaged_AP)
-        %     start_of_AP = NaN;
-        % else
-        %     start_of_AP = ((max_place-min_place)/2)+2+min_place;
-        % % [~,start_of_AP] = min(abs(averaged_AP(min_place:max_place) - 0.5));
-        % % % [~,min_place] = min(averaged_AP(1:max_place));
-        % % start_of_AP = start_of_AP + 2 + min_place;
-        end
-
-    end
-
-    function [fig] = plot_examples_simple(data,x,y,AP_start_points,AP_baselines,AP_end_points,APD)
-        figure
-        pixel_example = squeeze(data(x,y,:));
-        plot(pixel_example)
-        hold on
-        colors = lines(length(APD));
-        title(sprintf('APD = %g, x = %d, y = %d', APD(1), x, y))
-        %APDs = [];
-        for i = 1:length(APD)
-            c = colors(i,:);
-            baseline_pixel = ones(1,length(pixel_example))*AP_baselines(i);
-            plot(1:length(pixel_example),baseline_pixel,'Color',c,'LineWidth', 3)
-            %
-            hold on
-            S2_start_pixel = ones(1,11)*AP_start_points(i);
-            plot(S2_start_pixel, 0:0.1:1,'Color',c,'LineWidth', 3)
-            S2_end_pixel = ones(1,11)*AP_end_points(i);
-            plot(S2_end_pixel, 0:0.1:1,'Color',c,'LineWidth', 3)
-            %APDval = APD(i)
-            % APD = AP_end_points{x,y}(i) - AP_start_points{x,y}(i)
-            % APDs = [APDs, APD];
-
-        end
-        
-        fig=1;
     end
 
     function [SNR_mask,SNR_matrix] = SNR_mask_calc(data,length_of_data)
 
         %% BG time points
+        % Plot one good pixel to choose the background noise and actual
+        % signal. Right now it just plots pixel 150,150, might need to
+        % change depending on the data. Make sure to change the pixel for
+        % both figures.
         figure('Name','fig1')
-        % plot(1:4999,squeeze(data(150,150,:))); % find the time points of BG in a good pixel
+        
         plot(1:length_of_data,squeeze(data(150,150,:)));
         % plot(1:length_of_data,squeeze(data(174,172,:)));
         % plot(1:length_of_data,squeeze(data(172,70,:))); % nov5
-        
+
         title('Choose background noise')
         % In this figure, select a range of values where there should be no signal
         [xi] = getpts;
@@ -570,7 +446,7 @@ end
         plot(1:length_of_data,squeeze(data(150,150,:)))
         % plot(1:length_of_data,squeeze(data(174,172,:)));
         % plot(1:length_of_data,squeeze(data(172,70,:))); % nov5
-        
+
         title('Choose signal')
         % In this figure, select a range of values where there is signal
         [xi] = getpts;
@@ -605,447 +481,17 @@ end
 
 
         % Create a mask with the pixels where SNR is larger than your selected
-        % threshold.
+        % threshold. Here we are saying SNR>2 but can change as needed.
         SNR_mask = zeros(256,256);
         SNR_mask(SNR_matrix>2) = 1;
-        
-
-        % % Create a mask with a specific number of pixels
-        % SNR_mask = zeros(256,256);
-        % N = 30000;
-        % 
-        % 
-        % [~, idx] = sort(SNR_matrix(:), 'descend');
-        % 
-        % % Select the top N indices
-        % topN = idx(1:N);
-        % 
-        % % Set those locations to 1 in the mask
-        % SNR_mask(topN) = 1;
 
         % Visualize your final mask
         figure
         imagesc(SNR_mask)
 
     end
-    
-    function [long_APD_final,short_APD_final,average_differences]=restitution_vals(alternanceMap,AP_storage)
-        % Choose pixels with a positive difference
-        idx = find(alternanceMap >= (0.2*max(max(alternanceMap))));     % linear indices
-        [row, col] = ind2sub(size(alternanceMap), idx);
-        odd_avg  = zeros(size(row));
-        even_avg = zeros(size(row));
-
-        % For each pixel, get average of long and average of short
-        for pixel_high_alternan = 1:length(row)
-            APD_values = AP_storage{row(pixel_high_alternan),col(pixel_high_alternan)};
-            if isempty(APD_values)
-                odd_avg(pixel_high_alternan) = NaN;
-                even_avg(pixel_high_alternan) = NaN;
-            else
-
-                odd_avg(pixel_high_alternan)  = mean(APD_values(1:2:end));  % odd indices
-                if length(APD_values) >= 2
-
-                    even_avg(pixel_high_alternan) = mean(APD_values(2:2:end));  % even indices
-                else
-                    even_avg(pixel_high_alternan) = NaN;
-                end
 
 
-            end
-        end
-        %% Get final values for restitution curve
-        long_APD = odd_avg;
-        short_APD = even_avg;
-        % Choose pixels with a negative difference
-        idx = find(alternanceMap <= (0.2*min(min(alternanceMap))));     % linear indices
-        [row, col] = ind2sub(size(alternanceMap), idx);
-        odd_avg  = zeros(size(row));
-        even_avg = zeros(size(row));
-        % For each pixel, get average of long and average of short
-        for pixel_high_alternan = 1:length(row)
-            APD_values = AP_storage{row(pixel_high_alternan),col(pixel_high_alternan)};
-            if isempty(APD_values)
-                odd_avg(pixel_high_alternan) = NaN;
-                even_avg(pixel_high_alternan) = NaN;
-            else
-                odd_avg(pixel_high_alternan)  = mean(APD_values(1:2:end));  % odd indices
-                if length(APD_values) >= 2
-                    even_avg(pixel_high_alternan) = mean(APD_values(2:2:end));  % even indices
-                else
-                    even_avg(pixel_high_alternan) = NaN;
-                end
-            end
-        end
-
-        %% Get final values for restitution curve
-        long_APD = [long_APD;even_avg];
-        short_APD = [short_APD;odd_avg];
-
-        long_APD_final = mean(long_APD);
-        short_APD_final = mean(short_APD);
-        average_differences = long_APD_final - short_APD_final;
-    end
+end
 
 
-
-
-
-
-
-
-
-
-% 
-% 
-% 
-% %% Load data.
-% data = uigetfile('C:\Users\Sofia\Desktop\Rhythm (2)\Rhythm\rhythm_try2\data.mat'); %choose your clean data file (change to your directory)
-% data = load(data);
-% data = struct2cell(data);
-% data= cell2mat(data);
-% disp('Loaded data') % Display messages throughout just to know where we are.
-% 
-% %% SNR mask
-% [SNR_mask,S2_start_point,S2_end_point] = SNR_mask_calc(data);
-% %% Find baseline for AP
-% % [baseline_start_point, baseline_end_point] = baseline_calc(data);
-% %% Get APDs - S2
-% % data = data.*SNR_mask;
-% % count = 1;
-% % [apdMap, APD_fig, apd_mean, apd_std, apd_median,S2_start_points,S2_end_points,~,baseline_mean] = APDcalc(baseline_start_point,baseline_end_point,count, S2_start_point, Fs, S2_end_point, data, minapd, maxapd, percentAPD, area_coords, handles, movie_scrn, cmap);
-% % save('C:\Users\Sofia\Desktop\PAH\B2F3\S2120.mat','apdMap') %change to your directory
-% % savefig(APD_fig, 'C:\Users\Sofia\Desktop\PAH\B2F3\S2120.fig'); % change to your directory
-% %% Get multiple APDs
-% pixel = squeeze(data(150,150,:));
-% figure
-% plot(pixel)
-% [xi] = getpts;
-% start_points=[];
-% end_points=[];
-% baseline_start_points=[];
-% baseline_end_points=[];
-% for peak = 1:4:length(xi)-3
-%     start_points = [start_points, xi(peak)];
-%     end_points = [end_points, xi(peak+1)];
-%     baseline_start_points = [baseline_start_points, xi(peak+2)];
-%     baseline_end_points = [baseline_end_points, xi(peak+2)];
-% end
-% 
-% count = 1;
-% mean =[];
-% std1= [];
-% median = [];
-% data = data.*SNR_mask;
-% for i = 1:length(start_points)
-%     S1_start_point = start_points(i);
-%     S1_end_point = end_points(i);
-%     baseline_start_point = round(baseline_start_points(i));
-%     baseline_end_point = round(baseline_end_points(i));
-%     [apdMap, APD_fig, apd_mean, apd_std, apd_median,S2_start_points,S2_end_points,~,baseline_mean] = APDcalc(baseline_start_point,baseline_end_point,count, S1_start_point, Fs, S1_end_point, data, minapd, maxapd, percentAPD, area_coords, handles, movie_scrn, cmap);
-%     save(['C:\Users\Sofia\Desktop\PAH\Aug6\S1_120ms_bin5\APD_data_',num2str(i),'.mat'],'apdMap') %change to your directory
-%     savefig(APD_fig, ['C:\Users\Sofia\Desktop\PAH\Aug6\S1_120ms_bin5\APD_fig_', num2str(i), '.fig']); % change to your directory
-%     mean = [mean;apd_mean];
-%     std1 = [std1;apd_std];
-%     median = [median;apd_median];
-%     count = count + 1;
-% end
-% mean
-% std1
-% median
-% 
-% 
-% 
-% 
-% shortest = min(min(apdMap))
-% longest = max(max(apdMap))
-% [xin, yin] = find(apdMap == shortest);
-% [xlon, ylon] = find(apdMap == longest);
-% 
-% 
-% 
-% count = 0;
-% 
-% 
-% while length(xin)<5
-%     count = count+1;
-%     [xnew, ynew] = find(apdMap == shortest+count);
-%     xin = [xin; xnew];
-%     yin = [yin; ynew];
-% end
-% 
-% count = 0;
-% 
-% while length(xlon)<5
-%     count = count+1;
-%     [xnewlon, ynewlon] = find(apdMap == longest-count);
-%     xlon = [xlon; xnewlon];
-%     ylon = [ylon; ynewlon];
-% end
-% 
-% 
-% if length(xin)>5
-%     xin = xin(1:5);
-%     yin = yin(1:5);
-% end
-% if length(xlon)>5
-%     xlon = xlon(1:5);
-%     ylon = ylon(1:5);
-% end
-% 
-% for i = 1:length(xin)
-%     pixel_all = data(xin(i),yin(i),:);
-%     pixel = squeeze(pixel_all); % you will get 1x1x(voltage). You want to get rid of 1x1. You end up just with the voltage data through time
-%     figure
-%     plot(pixel)
-%     title('short')
-%     hold on
-%     baseline_pixel = ones(1,4999)*baseline_mean(xin(i),yin(i));
-%     plot(1:4999,baseline_pixel)
-%     S2_start_pixel = ones(1,11)*S2_start_points(xin(i),yin(i));
-%     plot(S2_start_pixel, 0:0.1:1)
-%     S2_end_pixel = ones(1,11)*S2_end_points(xin(i),yin(i));
-%     plot(S2_end_pixel, 0:0.1:1)
-% % 
-% %     % plot the duration
-% %     % [apdMap, APD_fig, apd_mean, apd_std, apd_median] = APDcalc(co"unt, S2_start_point, Fs, S2_end_point, pixel_all, minapd, maxapd, percentAPD, area_coords, handles, movie_scrn, cmap);
-% end
-% 
-% for i = 1:length(xlon)
-%     pixel = data(xlon(i),ylon(i),:);
-%     pixel = squeeze(pixel); % you will get 1x1x(voltage). You want to get rid of 1x1. You end up just with the voltage data through time
-%     figure
-%     plot(pixel)
-%     title('long')
-%     hold on
-%     baseline_pixel = ones(1,4999)*baseline_mean(xlon(i),ylon(i));
-%     plot(1:4999,baseline_pixel)
-%     S2_start_pixel = ones(1,11)*S2_start_points(xlon(i),ylon(i));
-%     plot(S2_start_pixel, 0:0.1:1)
-%     S2_end_pixel = ones(1,11)*S2_end_points(xlon(i),ylon(i));
-%     plot(S2_end_pixel, 0:0.1:1)
-% end
-% 
-% a=1;
-% 
-% 
-% end
-% 
-% 
-% 
-% 
-% function [apdMap, APD_fig, apd_mean, apd_std, apd_median,S2_start_points,S2_end_points,baselines,baseline_mean] = APDcalc(baseline_start_point,baseline_end_point,count, start, Fs, endp, data, minapd, maxapd, percentAPD, area_coords, handles, movie_scrn, cmap)
-% %% Create initial variables
-% %start = 1 + round(start * Fs);
-% %endp = round(endp * Fs);
-% 
-% % baseline calculation
-% baseline = data(:,:,baseline_start_point:baseline_end_point);
-% baseline_mean = mean(baseline,3);
-% 
-% ap_data1 = data(:, :, round(start) : round(endp)); % cut data to just be in the times you choose (S2)
-% % set minimum to be your baseline
-% ap_data = cat(3, baseline_mean, ap_data1);
-% ap_data = max(ap_data, baseline_mean); 
-% %ap_data = normalize_data(ap_data); %normalize data in this time frame (256x256xtime)
-% 
-% % If you want to plot the single normalized AP in one pixel (150,150)
-% % figure
-% % plot(1:length(ap_data), squeeze(ap_data(150,150,:)))
-% 
-% 
-% apdMap = nan(size(ap_data, 1), size(ap_data, 2)); % make a matrix of NaN the size of your FOV
-% S2_start_points = nan(size(ap_data, 1), size(ap_data, 2));
-% S2_end_points = nan(size(ap_data, 1), size(ap_data, 2));
-% baselines = nan(size(ap_data, 1), size(ap_data, 2));
-% 
-% % APD_min_rescaled = minapd * Fs / 1000; % account for different Fs
-% % APD_max_rescaled = maxapd * Fs / 1000;
-% 
-% APD_min_rescaled = minapd;
-% APD_max_rescaled = maxapd;
-% 
-% AP_level = 1.0 - percentAPD / 100;
-% 
-% area_coords = int16(area_coords);
-% j_min = 1 + area_coords(1);
-% i_min = 1 + area_coords(2);
-% j_max = area_coords(1) + area_coords(3);
-% i_max = area_coords(2) + area_coords(4);
-% 
-% %% Map calculation
-% % for i = i_min : i_max
-% %     for j = j_min : j_max
-% for i = i_min : i_max
-%     for j = j_min : j_max
-% 
-%         pixel = ap_data(i,j,:);
-%         pixel = normalize_data(pixel);
-% 
-% 
-%         % for one pixel, in the duration of S2, find indices where the
-%         % voltage is less than your threshold
-% 
-%         %
-% 
-% 
-%         index = find(pixel <= AP_level); % find all time points where signal is less than your threshold
-% 
-%         if size(index, 1) > 2
-%             % find the differences of the indices
-%             differences = diff(index);
-%             % find the index of the greatest differences
-%             [~, location] = max(differences);
-%             % find the index of the start of S2 in the pixel in cut time
-%             S2_start_index = index(location);
-%             % find the index of the end of S2 in the pixel cut in time
-%             S2_end_index = index(location+1);
-%             % convert index in cut time to index in total recording
-%             S2_start_index = S2_start_index + round(start);
-%             S2_end_index = S2_end_index + round(start);
-%             % get the index of the lowest value in the plotted pixel
-%             S2_baseline = find(pixel==min(pixel));
-%             S2_baseline = S2_baseline + round(start);           
-% 
-%             apd = max(differences);
-%             if apd > 300
-%                 a=1;
-%             end
-%             if ((APD_min_rescaled < apd) && (apd < APD_max_rescaled))
-%                 apdMap(i, j) = apd;
-%                 S2_start_points(i,j) = S2_start_index;
-%                 S2_end_points(i,j) = S2_end_index;
-%                 baselines(i,j) = S2_baseline(1);
-%             end
-%         end
-% 
-%     end
-% end
-% 
-% % account for different sampling frequencies
-% % unitFix = 1000.0 / Fs;
-% % % Calculate Action Potential Duration
-% % apdMap = apdMap * unitFix;
-% 
-% 
-% %% Plot APDMap
-% handles.activeCamData.saveData = apdMap;
-% 
-% cla(movie_scrn);
-% 
-% colormap(handles.activeScreen, cmap);
-% imagesc(apdMap,'Parent', movie_scrn, 'AlphaData', ~isnan(apdMap));
-% %axis(movie_scrn,'off');
-% set(movie_scrn,'Color','k');
-% set(movie_scrn,'YDir','reverse');
-% set(movie_scrn,'YTick',[],'XTick',[]);
-% 
-% %Setting up values to use for color axis
-% APD_min = prctile(apdMap(isfinite(apdMap)),1);
-% APD_max = prctile(apdMap(isfinite(apdMap)),99);
-% %caxis(movie_scrn,[APD_min APD_max])
-% 
-% %% Plot Histogram of APDMap
-% % figure('Name','Histogram of APD')
-% % hist(reshape(apdMap,[],1),floor(APD_max-APD_min))
-% % xlim([APD_min APD_max])
-% 
-% %% Calculating statistics
-% apd_mean=nanmean(apdMap(:));
-% disp(['The average APD in the region is ' num2str(apd_mean) ' (ms).'])
-% apd_std=nanstd(apdMap(:));
-% disp(['The standard deviation of APDs in the region is ' num2str(apd_std) ' (ms).'])
-% apd_median=nanmedian(apdMap(:));
-% disp(['The median APD in the region is ' num2str(apd_median) ' (ms).'])
-% 
-% handles.activeCamData.meanresults           = sprintf('Mean: %0.3f (ms)',apd_mean);
-% handles.activeCamData.medianresults         = sprintf('Median: %0.3f (ms)',apd_median);
-% handles.activeCamData.SDresults             = sprintf('S.D.: %0.3f (ms)',apd_std);
-% handles.activeCamData.num_membersresults    = sprintf('');
-% handles.activeCamData.angleresults          = sprintf('');
-% 
-% set(handles.meanresults,'String',handles.activeCamData.meanresults);
-% set(handles.medianresults,'String',handles.activeCamData.medianresults);
-% set(handles.SDresults,'String',handles.activeCamData.SDresults);
-% set(handles.num_members_results,'String',handles.activeCamData.num_membersresults);
-% set(handles.angleresults,'String',handles.activeCamData.angleresults);
-% 
-% APD_fig = figure;
-% imagesc(apdMap);
-% title(num2str(count))
-% colorbar
-% end
-% 
-% function [SNR_mask,S2_start_point,S2_end_point] = SNR_mask_calc(data)
-% 
-% %% SNR time points
-% figure('Name','fig1')
-% % plot(1:4999,squeeze(data(150,150,:))); % find the time points of BG in a good pixel
-% plot(1:4999,squeeze(data(150,150,:)));
-% title('Choose background noise')
-% 
-% [xi] = getpts;
-% 
-% BG_start_point = round(xi(1));
-% BG_end_point = round(xi(2));
-% 
-% close fig1
-% 
-% %% S2 time point
-% % pixel = data(150,150,:);
-% pixel = data(150,150,:);
-% pixel = squeeze(pixel); % you will get 1x1x(voltage). You want to get rid of 1x1. You end up just with the voltage data through time
-% figure('Name','fig2')
-% plot(pixel)
-% title('Choose signal')
-% [xi] = getpts;
-% 
-% S2_start_point = round(xi(1));
-% S2_end_point = round(xi(2));
-% 
-% close fig2
-% 
-% %% Get SNR mask
-% for i = 1: 256
-%     for j = 1:256
-%         pixel_noise = squeeze(data(i,j,BG_start_point:BG_end_point));
-%         dev_noise = std(pixel_noise);
-%         pixel_S2 = squeeze(data(i,j,S2_start_point:S2_end_point));
-%         MSV = max(pixel_S2)-min(pixel_S2);
-%         SNR = MSV/dev_noise;
-%         SNR_matrix(i,j) = SNR;
-%     end
-% end
-% 
-% % figure
-% % imagesc(SNR_matrix)
-% % colorbar
-% 
-% m = max(max(SNR_matrix));
-% SNR_matrix_norm = SNR_matrix/m;
-% 
-% figure
-% imagesc(SNR_matrix_norm)
-% colorbar
-% 
-% SNR_mask = zeros(256,256);
-% SNR_mask(SNR_matrix_norm>0.33) = 1;
-% figure
-% imagesc(SNR_mask)
-% end
-% 
-% function [baseline_start_point, baseline_end_point] = baseline_calc(data)
-%% baseline
-%pixel = data(150,150,:);
-% pixel = data(150,150,:);
-% pixel = squeeze(pixel); % you will get 1x1x(voltage). You want to get rid of 1x1. You end up just with the voltage data through time
-% figure('Name','fig3')
-% plot(pixel)
-% title('Choose AP baseline')
-% [xi] = getpts;
-% 
-% baseline_start_point = round(xi(1));
-% baseline_end_point = round(xi(2));
-% close fig3
-% end
